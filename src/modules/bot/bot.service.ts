@@ -19,6 +19,7 @@ export class BotService {
   private create_config: VenomType.CreateConfig
   constructor(@InjectModel(Bot.name) private readonly botModel: Model<BotDocument>) {
     this.create_config = {
+      multidevice: true,
       logQR: false,
       devtools: false,
       disableWelcome: true,

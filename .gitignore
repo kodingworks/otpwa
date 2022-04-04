@@ -3,6 +3,8 @@
 /node_modules
 /tokens
 
+.env
+
 # Logs
 logs
 *.log
