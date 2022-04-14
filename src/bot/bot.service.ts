@@ -39,7 +39,7 @@ export class BotService {
       }
     }
     this.sessions = []
-    this.resumeBot()
+    // this.resumeBot()
   }
   async createBot(data: CreateNewBotDto) {
     try {
@@ -65,6 +65,7 @@ export class BotService {
             botToInsert.status = BotStatusEnum.ONLINE
           }
           console.log('Session name: ', session)
+          return
         },
         this.create_config
       )
@@ -128,6 +129,7 @@ export class BotService {
             .then(async (client) => {
               this.sessions.push({ client, ...this.mapToSessionDto(bot) })
               // this.start(client)
+              return client
             })
             .catch((err) => {
               throw err
