@@ -1,7 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
+import { HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model } from 'mongoose'
 import VenomType from 'venom-bot'
+import { InternalServerError } from '../shared/provider/error-provider'
+import { OkResponse } from '../shared/provider/response-provider'
 import { BotSessionDto, BotStatusEnum, CreateNewBotDto, SendMessageDto } from './bot.dto'
 import { Bot, BotDocument } from './bot.model'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -65,6 +67,7 @@ export class BotService {
             botToInsert.status = BotStatusEnum.ONLINE
           }
           console.log('Session name: ', session)
+          return
         },
         this.create_config
       )
@@ -78,7 +81,12 @@ export class BotService {
         .catch((err) => {
           throw err
         })
+
+      return new OkResponse({
+        api_key
+      })
     } catch (error) {
+      console.log('error: ', error)
       throw error
     }
   }
@@ -86,17 +94,28 @@ export class BotService {
   async sendMessage(data: SendMessageDto) {
     try {
       const bot = this.sessions.find((b) => b.api_key === data.token)
+
       if (!bot) {
         throw new NotFoundException('Token Invalid')
       }
+
       const client = bot.client
       const chat_id = `${data.phone}@c.us`
-      client.sendText(chat_id, data.message).catch((err) => {
-        console.log(err)
-        throw err
-      })
+      return client
+        .sendText(chat_id, data.message)
+        .then((res) => {
+          return new OkResponse({
+            status: (res as any)?.status
+          })
+        })
+        .catch((err) => {
+          console.log(err)
+          throw err
+        })
     } catch (error) {
-      throw error
+      console.log('error: ', error)
+
+      throw new HttpException(new InternalServerError(error?.message), HttpStatus.INTERNAL_SERVER_ERROR)
     }
   }
 
@@ -128,6 +147,7 @@ export class BotService {
             .then(async (client) => {
               this.sessions.push({ client, ...this.mapToSessionDto(bot) })
               // this.start(client)
+              return client
             })
             .catch((err) => {
               throw err
@@ -137,7 +157,7 @@ export class BotService {
         }
       })
     } catch (error) {
-      throw error
+      throw new HttpException(new InternalServerError(error?.message), HttpStatus.INTERNAL_SERVER_ERROR)
     }
   }
 

@@ -8,7 +8,12 @@ import { AppModule } from './app.module'
 async function bootstrap() {
   // Sentry.init()
   const app = await NestFactory.create(AppModule)
+
+  app.enableCors()
+
   app.use(helmet())
+  app.setGlobalPrefix('api')
+
   const PORT = process.env.PORT || 3000
   await app.listen(PORT, () => {
     console.log(`Listening on port ${PORT}...`)

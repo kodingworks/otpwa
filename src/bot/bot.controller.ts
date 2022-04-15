@@ -2,7 +2,7 @@ import { Body, Controller, Post } from '@nestjs/common'
 import { CreateNewBotDto, SendMessageDto } from './bot.dto'
 import { BotService } from './bot.service'
 
-@Controller('api/whatsapp/')
+@Controller('whatsapp')
 export class BotController {
   constructor(private readonly botService: BotService) {}
 
