@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common'
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common'
+import { BotService } from 'src/bot/bot.service'
 import { BadRequestError, ErrorCodeEnum, InternalServerError } from 'src/shared/provider/error-provider'
 import { OkResponse } from 'src/shared/provider/response-provider'
 import { RedisService } from '../redis/redis.service'
@@ -7,7 +8,7 @@ import { CreateOtpDto, OtpDto, VerifyOtpDto } from './otp.dto'
 
 @Injectable()
 export class OtpService {
-  constructor(private cacheManager: RedisService) {}
+  constructor(private cacheManager: RedisService, private botService: BotService) {}
 
   /**
    * Initiate an account verification request
@@ -16,11 +17,12 @@ export class OtpService {
    */
   async create(data: CreateOtpDto) {
     const {
+      bot_token,
       phone,
       otp_length = 6,
       expires_in = 300, // by default, auth codes expire after 300s (5 minutes)
-      // subject = 'Your Authorization Code', // configurable subject line for the email
-      content = getDefaultContent() // default string content of the email template to send
+      // subject = 'Your Authorization Code', // configurable subject line for the phone
+      content = getDefaultContent() // default string content of the phone template to send
     } = data
 
     /**
@@ -52,7 +54,8 @@ export class OtpService {
       const hashed_target = hash(phone)
       const hashed_target_string = hashed_target.toString()
       const hashed_code = hash(`${code}`)
-      const expires_at = new Date(Math.floor(Date.now() / 1000) + expires_in).toISOString()
+      const expires_at = new Date(Math.floor(Date.now()) + expires_in * 1000).toISOString()
+
       const MAX_VALIDITY_IN_SECONDS = parseInt(process.env.REDIS_TTL) // 7 days, expressed in seconds
 
       const target_type = 'phone'
@@ -69,11 +72,25 @@ export class OtpService {
       })
 
       /**
-       * For now, only `email` target_type is supported
+       * For now, only `phone` target_type is supported
        */
-      // if (target_type === 'email') await EmailService.sendEmail(target, subject, text)
 
-      console.log('text: ', text)
+      const default_bot_token = process.env.DEFAULT_BOT_TOKEN
+
+      await this.botService
+        .sendMessage({
+          token: bot_token || default_bot_token,
+          message: text,
+          phone
+        })
+        .then((resp) => {
+          console.log('resp: ', resp)
+        })
+        .catch((err) => {
+          console.log('err: ', err)
+        })
+
+      console.log('text :', text)
 
       return new OkResponse(
         { success: true },
@@ -83,7 +100,7 @@ export class OtpService {
       )
     } catch (err) {
       console.log('err: ', err)
-      return new InternalServerError(err?.message)
+      throw new InternalServerError(err?.message)
     }
   }
 
@@ -117,9 +134,12 @@ export class OtpService {
        * - wrong target or target type
        */
       if (!saved) {
-        return new BadRequestError('Invalid OTP.', {
-          errorCode: ErrorCodeEnum.ERROR_OTP_INVALID
-        })
+        throw new HttpException(
+          new BadRequestError('Invalid OTP.', {
+            errorCode: ErrorCodeEnum.ERROR_OTP_INVALID
+          }),
+          HttpStatus.BAD_REQUEST
+        )
       }
 
       /**
@@ -135,9 +155,12 @@ export class OtpService {
       const now = Math.floor(Date.now() / 1000)
       const expired_at = saved?.expires_at && new Date(saved?.expires_at).getTime()
       if (expired_at < now) {
-        return new BadRequestError('OTP Expired', {
-          errorCode: ErrorCodeEnum.ERROR_OTP_EXPIRED
-        })
+        throw new HttpException(
+          new BadRequestError('OTP Expired', {
+            errorCode: ErrorCodeEnum.ERROR_OTP_EXPIRED
+          }),
+          HttpStatus.BAD_REQUEST
+        )
       }
 
       /**
@@ -147,9 +170,12 @@ export class OtpService {
        * - the hash function gave a different result for some other reason
        */
       if (hashed_code !== saved.code) {
-        return new BadRequestError('Invalid OTP.', {
-          errorCode: ErrorCodeEnum.ERROR_OTP_INVALID
-        })
+        throw new HttpException(
+          new BadRequestError('Invalid OTP.', {
+            errorCode: ErrorCodeEnum.ERROR_OTP_INVALID
+          }),
+          HttpStatus.BAD_REQUEST
+        )
       }
 
       return new OkResponse(
@@ -164,7 +190,7 @@ export class OtpService {
        * validation message, to prevent account enumeration and other nasty security
        * issues that it could lead to.
        */
-      return new InternalServerError(err?.message)
+      throw err
     }
   }
 }

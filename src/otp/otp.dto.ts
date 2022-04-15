@@ -3,6 +3,9 @@ import { JoiSchema } from 'nestjs-joi'
 
 export class CreateOtpDto {
   @JoiSchema(Joi.string().required())
+  bot_token: string
+
+  @JoiSchema(Joi.string().required())
   phone: string
 
   @JoiSchema(Joi.string().optional())
