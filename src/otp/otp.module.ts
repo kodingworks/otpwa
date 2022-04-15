@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common'
-import { BotModule } from 'src/bot/bot.module'
+import { BotModule } from '../bot/bot.module'
 import { RedisModule } from '../redis/redis.module'
 import { OtpController } from './otp.controller'
 import { OtpService } from './otp.service'

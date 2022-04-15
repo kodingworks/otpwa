@@ -1,9 +1,9 @@
 import { HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model } from 'mongoose'
-import { InternalServerError } from 'src/shared/provider/error-provider'
-import { OkResponse } from 'src/shared/provider/response-provider'
 import VenomType from 'venom-bot'
+import { InternalServerError } from '../shared/provider/error-provider'
+import { OkResponse } from '../shared/provider/response-provider'
 import { BotSessionDto, BotStatusEnum, CreateNewBotDto, SendMessageDto } from './bot.dto'
 import { Bot, BotDocument } from './bot.model'
 // eslint-disable-next-line @typescript-eslint/no-var-requires

@@ -9,9 +9,6 @@ export class CreateOtpDto {
   phone: string
 
   @JoiSchema(Joi.string().optional())
-  subject?: string
-
-  @JoiSchema(Joi.string().optional())
   content?: string
 
   @JoiSchema(Joi.number().optional())

@@ -1,9 +1,9 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common'
-import { BotService } from 'src/bot/bot.service'
-import { BadRequestError, ErrorCodeEnum, InternalServerError } from 'src/shared/provider/error-provider'
-import { OkResponse } from 'src/shared/provider/response-provider'
+import { BotService } from '../bot/bot.service'
 import { RedisService } from '../redis/redis.service'
 import { generateRandomCode, getDefaultContent, getNowString, hash } from '../shared/helper/hash'
+import { BadRequestError, ErrorCodeEnum } from '../shared/provider/error-provider'
+import { OkResponse } from '../shared/provider/response-provider'
 import { CreateOtpDto, OtpDto, VerifyOtpDto } from './otp.dto'
 
 @Injectable()
@@ -21,7 +21,6 @@ export class OtpService {
       phone,
       otp_length = 6,
       expires_in = 300, // by default, auth codes expire after 300s (5 minutes)
-      // subject = 'Your Authorization Code', // configurable subject line for the phone
       content = getDefaultContent() // default string content of the phone template to send
     } = data
 
@@ -50,13 +49,12 @@ export class OtpService {
        * shortly after. It is safe enough to not hash+salt the data,
        * we just need to make it non-reversible.
        */
+      const MAX_VALIDITY_IN_SECONDS = parseInt(process.env.REDIS_TTL) // 7 days, expressed in seconds
 
       const hashed_target = hash(phone)
       const hashed_target_string = hashed_target.toString()
       const hashed_code = hash(`${code}`)
       const expires_at = new Date(Math.floor(Date.now()) + expires_in * 1000).toISOString()
-
-      const MAX_VALIDITY_IN_SECONDS = parseInt(process.env.REDIS_TTL) // 7 days, expressed in seconds
 
       const target_type = 'phone'
       const SK = `target#${target_type}#${hashed_target}`
@@ -85,12 +83,12 @@ export class OtpService {
         })
         .then((resp) => {
           console.log('resp: ', resp)
+          return resp
         })
         .catch((err) => {
           console.log('err: ', err)
+          throw err
         })
-
-      console.log('text :', text)
 
       return new OkResponse(
         { success: true },
@@ -98,9 +96,9 @@ export class OtpService {
           message: 'OTP has been successfully created & sent to the recipient phone'
         }
       )
-    } catch (err) {
-      console.log('err: ', err)
-      throw new InternalServerError(err?.message)
+    } catch (error) {
+      console.log('error: ', error)
+      throw error
     }
   }
 
@@ -184,13 +182,13 @@ export class OtpService {
           message: 'OTP Valid.'
         }
       )
-    } catch (err) {
+    } catch (error) {
       /**
        * Any error case should just return an undescript, generic unsuccessful
        * validation message, to prevent account enumeration and other nasty security
        * issues that it could lead to.
        */
-      throw err
+      throw error
     }
   }
 }
