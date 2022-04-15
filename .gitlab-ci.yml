@@ -1,0 +1,70 @@
+# please make sure that image version already matched.
+# with node version that installed in server
+stages:
+  - test
+  - build
+  - deploy
+
+cache:
+  paths:
+    - node_modules/
+
+build:
+  stage: build
+  image: alpine
+  before_script:
+    - apk add zip
+    - apk add nodejs npm --repository="http://dl-cdn.alpinelinux.org/alpine/v3.14/main/"
+    - npm install yarn -g
+  script:
+    - yarn
+    - yarn build
+    - zip -r dist.zip dist
+  only:
+    - merge_requests
+  artifacts:
+    paths:
+      - dist.zip
+  cache:
+    paths:
+      - node_modules/
+
+build_dev:
+  stage: build
+  image: alpine
+  before_script:
+    - apk add zip
+    - apk add nodejs npm --repository="http://dl-cdn.alpinelinux.org/alpine/v3.14/main/"
+    - npm install yarn -g
+  script:
+    - yarn
+    - yarn build
+    - zip -r dist.zip dist
+  artifacts:
+    paths:
+      - dist.zip
+  only:
+    - development
+  cache:
+    paths:
+      - node_modules/
+
+deploy_dev:
+  stage: deploy
+  image: alpine
+  before_script:
+    - apk add openssh-client
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY_DEVELOPMENT" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+  script:
+    - echo "$BASE_DIR"
+    - echo "$SCRIPT_DIR"
+    - echo "$BUILDS_DIR"
+    - scp -o StrictHostKeyChecking=no dist.zip $SSH_USER_DEVELOPMENT@$SSH_HOSTNAME_DEVELOPMENT:$BASE_DIR/$BUILDS_DIR
+    - ssh -o StrictHostKeyChecking=no $SSH_USER_DEVELOPMENT@$SSH_HOSTNAME_DEVELOPMENT "ENV_APP=development APP_NAME=whatsapp-bot BASE_DIR=$BASE_DIR BUILDS_DIR=$BUILDS_DIR SCRIPT_DIR=$SCRIPT_DIR APP_DIST_FILENAME=dist.zip $BASE_DIR/$SCRIPT_DIR/deploy.sh"
+  only:
+    - development
+  needs:
+    - build_dev
