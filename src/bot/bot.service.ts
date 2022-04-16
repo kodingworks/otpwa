@@ -1,8 +1,7 @@
-import { HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common'
+import { HttpException, Injectable, NotFoundException } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model } from 'mongoose'
 import VenomType from 'venom-bot'
-import { InternalServerError } from '../shared/provider/error-provider'
 import { OkResponse } from '../shared/provider/response-provider'
 import { BotSessionDto, BotStatusEnum, CreateNewBotDto, SendMessageDto } from './bot.dto'
 import { Bot, BotDocument } from './bot.model'
@@ -86,8 +85,8 @@ export class BotService {
         api_key
       })
     } catch (error) {
-      console.log('error: ', error)
-      throw error
+      console.log('error adsadad: ', error)
+      throw new HttpException(error?.response || error, error?.meta?.statusCode ? error?.meta?.statusCode : 500)
     }
   }
 
@@ -113,9 +112,7 @@ export class BotService {
           throw err
         })
     } catch (error) {
-      console.log('error: ', error)
-
-      throw new HttpException(new InternalServerError(error?.message), HttpStatus.INTERNAL_SERVER_ERROR)
+      throw new HttpException(error?.response || error, error?.response?.statusCode ? error?.response?.statusCode : 500)
     }
   }
 
@@ -157,7 +154,7 @@ export class BotService {
         }
       })
     } catch (error) {
-      throw new HttpException(new InternalServerError(error?.message), HttpStatus.INTERNAL_SERVER_ERROR)
+      throw new HttpException(error?.response || error, error?.response?.statusCode ? error?.response?.statusCode : 500)
     }
   }
 
