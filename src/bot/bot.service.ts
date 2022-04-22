@@ -2,6 +2,8 @@ import makeWASocket, { DisconnectReason, useSingleFileAuthState } from '@adiwajs
 import { Boom } from '@hapi/boom'
 import { HttpException, Injectable, NotFoundException } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
+import * as colors from 'colors'
+import * as figlet from 'figlet'
 import * as fs from 'fs'
 import { Model } from 'mongoose'
 import { NotFoundError } from 'src/shared/provider/error-provider'
@@ -45,7 +47,7 @@ async function connectToWhatsApp() {
         connectToWhatsApp()
       }
     } else if (connection === 'open') {
-      console.log('opened connection')
+      console.log(colors.green(figlet.textSync('Bot Connected', { horizontalLayout: 'full' })))
     }
   })
 
