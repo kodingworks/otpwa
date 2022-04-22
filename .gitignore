@@ -39,3 +39,6 @@ lerna-debug.log*
 
 # Ignore redis binary dump (dump.rdb) files
 *.rdb
+
+auth_info_multi.json
+auth_info_multi.*
