@@ -1,47 +1,71 @@
+import makeWASocket, { DisconnectReason, useSingleFileAuthState } from '@adiwajshing/baileys'
+import { Boom } from '@hapi/boom'
 import { HttpException, Injectable, NotFoundException } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
+import * as fs from 'fs'
 import { Model } from 'mongoose'
-import VenomType from 'venom-bot'
+import { NotFoundError } from 'src/shared/provider/error-provider'
 import { OkResponse } from '../shared/provider/response-provider'
-import { BotSessionDto, BotStatusEnum, CreateNewBotDto, SendMessageDto } from './bot.dto'
+import { BotSessionDto, CreateNewBotDto, SendMessageDto } from './bot.dto'
 import { Bot, BotDocument } from './bot.model'
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const Venom: typeof VenomType = require('venom-bot')
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const generateApiKey = require('generate-api-key')
 
+let sock
+
+const authFileJsonPath = './auth_info_multi.json'
+const { state, saveState } = useSingleFileAuthState(authFileJsonPath)
+
+function deleteOldAuthFileOnReconnect() {
+  // Delete the auth file if exists
+  const isAuthFileExists = fs.existsSync(authFileJsonPath)
+  if (isAuthFileExists) {
+    fs.unlinkSync(authFileJsonPath)
+  }
+
+  return true
+}
+
+async function connectToWhatsApp() {
+  sock = makeWASocket({
+    // can provide additional config here
+    printQRInTerminal: true,
+    auth: state
+  })
+
+  sock.ev.on('connection.update', (update) => {
+    const { connection, lastDisconnect } = update
+
+    if (connection === 'close') {
+      const shouldReconnect = (lastDisconnect.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut
+      console.log('connection closed due to ', lastDisconnect.error, ', reconnecting ', shouldReconnect)
+      // reconnect if not logged out
+      if (shouldReconnect) {
+        deleteOldAuthFileOnReconnect()
+        connectToWhatsApp()
+      }
+    } else if (connection === 'open') {
+      console.log('opened connection')
+    }
+  })
+
+  sock.ev.on('messages.upsert', async (m) => {
+    console.log(JSON.stringify(m, undefined, 2))
+
+    console.log('replying to', m.messages[0].key.remoteJid)
+  })
+
+  sock.ev.on('creds.update', saveState)
+}
+
 @Injectable()
 export class BotService {
-  private sessions: Array<
-    {
-      client: VenomType.Whatsapp
-    } & BotSessionDto
-  >
-  private create_config: VenomType.CreateConfig
+  private sessions: BotSessionDto[] = []
+
   constructor(@InjectModel(Bot.name) private readonly botModel: Model<BotDocument>) {
-    this.create_config = {
-      multidevice: true,
-      logQR: false,
-      devtools: false,
-      disableWelcome: true,
-      updatesLog: false,
-      puppeteerOptions: {
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote',
-          '--single-process',
-          '--disable-gpu'
-        ]
-      }
-    }
-    this.sessions = []
-    this.resumeBot()
+    connectToWhatsApp()
   }
+
   async createBot(data: CreateNewBotDto) {
     try {
       console.log(`Create Bot ${data.name}`)
@@ -50,36 +74,28 @@ export class BotService {
         prefix: 'p.iobot_',
         length: 20
       })
+
+      if (!state) {
+        throw new NotFoundError(`No Bot connected.`)
+      }
+      console.log('state: ', state)
+
+      const unwanted_code = state?.creds?.me?.id?.replace(/^\d+/, '')
+      const phone_number = state?.creds?.me?.id.replace(unwanted_code, '')
+      const user_id = state?.creds?.me?.id
+
       const botToInsert = new this.botModel()
       botToInsert.name = data.name
       botToInsert.api_key = api_key
-      Venom.create(
-        `BOT-${botToInsert._id}`,
-        (base64Qrimg, asciiQR) => {
-          console.log('Terminal qrcode:')
-          console.log(asciiQR)
-        },
-        (statusSession, session) => {
-          console.log('Status Session: ', statusSession) //return isLogged || notLogged || browserClose || qrReadSuccess || qrReadFail || autocloseCalled || desconnectedMobile || deleteToken || chatsAvailable || deviceNotConnected || serverWssNotConnected || noOpenBrowser
-          //Create session wss return "serverClose" case server for close
-          if (statusSession === 'qrReadSuccess') {
-            botToInsert.status = BotStatusEnum.ONLINE
-          }
-          console.log('Session name: ', session)
-          return
-        },
-        this.create_config
-      )
-        .then(async (client) => {
-          const phone = (await client.getHostDevice()).id
-          botToInsert.phone = (phone as any).user
-          botToInsert.user_id = (phone as any)._serialized
-          await botToInsert.save()
-          this.sessions.push({ client, ...this.mapToSessionDto(botToInsert) })
-        })
-        .catch((err) => {
-          throw err
-        })
+      botToInsert.phone = phone_number
+      botToInsert.user_id = user_id
+
+      await botToInsert.save()
+
+      const isTokenAlreadyExists = this.sessions.find((b) => b.api_key === api_key || b.id === user_id)
+      if (!isTokenAlreadyExists) {
+        this.sessions.push(this.mapToSessionDto(botToInsert))
+      }
 
       return new OkResponse({
         api_key
@@ -98,60 +114,9 @@ export class BotService {
         throw new NotFoundException('Token Invalid')
       }
 
-      const client = bot.client
-      const chat_id = `${data.phone}@c.us`
-      return client
-        .sendText(chat_id, data.message)
-        .then((res) => {
-          return new OkResponse({
-            status: (res as any)?.status
-          })
-        })
-        .catch((err) => {
-          console.log(err)
-          throw err
-        })
-    } catch (error) {
-      throw new HttpException(error?.response || error, error?.response?.statusCode ? error?.response?.statusCode : 500)
-    }
-  }
-
-  private async resumeBot() {
-    try {
-      const listBot = await this.botModel.find()
-      listBot.forEach(async (bot) => {
-        try {
-          Venom.create(
-            `BOT-${bot._id}`,
-            async (base64Qrimg, asciiQR) => {
-              console.log('Terminal qrcode:')
-              console.log(asciiQR)
-              await bot.updateOne({
-                status: BotStatusEnum.NEED_SCAN_QR
-              })
-            },
-            async (statusSession, session) => {
-              console.log('Status Session: ', statusSession)
-              if (statusSession === 'qrReadSuccess') {
-                await bot.updateOne({
-                  status: BotStatusEnum.ONLINE
-                })
-              }
-              console.log('Session name: ', session)
-            },
-            this.create_config
-          )
-            .then(async (client) => {
-              this.sessions.push({ client, ...this.mapToSessionDto(bot) })
-              // this.start(client)
-              return client
-            })
-            .catch((err) => {
-              throw err
-            })
-        } catch (error) {
-          throw error
-        }
+      const chat_id = data.phone?.includes('@') ? data.phone : `${data.phone}@s.whatsapp.net`
+      return await sock.sendMessage(chat_id, {
+        text: data.message
       })
     } catch (error) {
       throw new HttpException(error?.response || error, error?.response?.statusCode ? error?.response?.statusCode : 500)
