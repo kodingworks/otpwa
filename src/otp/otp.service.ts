@@ -82,11 +82,9 @@ export class OtpService {
           phone
         })
         .then((resp) => {
-          console.log('resp: ', resp)
           return resp
         })
         .catch((err) => {
-          console.log('err: ', err)
           throw err
         })
 
@@ -97,8 +95,7 @@ export class OtpService {
         }
       )
     } catch (error) {
-      console.log('error: ', error)
-      throw error
+      throw new HttpException(error?.response || error, error?.response?.statusCode ? error?.response?.statusCode : 500)
     }
   }
 
@@ -153,12 +150,9 @@ export class OtpService {
       const now = Math.floor(Date.now() / 1000)
       const expired_at = saved?.expires_at && new Date(saved?.expires_at).getTime()
       if (expired_at < now) {
-        throw new HttpException(
-          new BadRequestError('OTP Expired', {
-            errorCode: ErrorCodeEnum.ERROR_OTP_EXPIRED
-          }),
-          HttpStatus.BAD_REQUEST
-        )
+        throw new BadRequestError('OTP Expired', {
+          errorCode: ErrorCodeEnum.ERROR_OTP_EXPIRED
+        })
       }
 
       /**
@@ -168,12 +162,9 @@ export class OtpService {
        * - the hash function gave a different result for some other reason
        */
       if (hashed_code !== saved.code) {
-        throw new HttpException(
-          new BadRequestError('Invalid OTP.', {
-            errorCode: ErrorCodeEnum.ERROR_OTP_INVALID
-          }),
-          HttpStatus.BAD_REQUEST
-        )
+        throw new BadRequestError('Invalid OTP.', {
+          errorCode: ErrorCodeEnum.ERROR_OTP_INVALID
+        })
       }
 
       return new OkResponse(
@@ -188,7 +179,8 @@ export class OtpService {
        * validation message, to prevent account enumeration and other nasty security
        * issues that it could lead to.
        */
-      throw error
+      // throw error
+      throw new HttpException(error?.response || error, error?.response?.statusCode ? error?.response?.statusCode : 500)
     }
   }
 }
