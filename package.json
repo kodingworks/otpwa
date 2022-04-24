@@ -41,6 +41,7 @@
     "mongoose": "^6.2.9",
     "nest-raven": "^8.0.0",
     "nestjs-joi": "^1.7.0",
+    "qrcode-terminal": "^0.12.0",
     "redis": "^3",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",

@@ -1,6 +1,6 @@
 import makeWASocket, { DisconnectReason, useSingleFileAuthState } from '@adiwajshing/baileys'
 import { Boom } from '@hapi/boom'
-import { HttpException, Injectable, NotFoundException } from '@nestjs/common'
+import { HttpException, Injectable, NotFoundException, OnModuleInit } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import * as colors from 'colors'
 import * as figlet from 'figlet'
@@ -61,10 +61,15 @@ async function connectToWhatsApp() {
 }
 
 @Injectable()
-export class BotService {
+export class BotService implements OnModuleInit {
   private sessions: BotSessionDto[] = []
 
-  constructor(@InjectModel(Bot.name) private readonly botModel: Model<BotDocument>) {
+  constructor(@InjectModel(Bot.name) private readonly botModel: Model<BotDocument>) {}
+
+  async onModuleInit() {
+    const botDocs = await this.botModel.find()
+    this.sessions = botDocs.map((doc) => this.mapToSessionDto(doc))
+
     connectToWhatsApp()
   }
 
