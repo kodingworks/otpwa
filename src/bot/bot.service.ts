@@ -1,11 +1,12 @@
 import makeWASocket, { DisconnectReason, useSingleFileAuthState } from '@adiwajshing/baileys'
 import { Boom } from '@hapi/boom'
-import { HttpException, Injectable, NotFoundException, OnModuleInit } from '@nestjs/common'
+import { HttpException, Injectable, OnModuleInit, UnauthorizedException } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import * as colors from 'colors'
 import * as figlet from 'figlet'
 import * as fs from 'fs'
 import { Model } from 'mongoose'
+import { validateToken } from 'src/shared/helper/token-validator'
 import { NotFoundError } from 'src/shared/provider/error-provider'
 import { OkResponse } from '../shared/provider/response-provider'
 import { BotSessionDto, CreateNewBotDto, SendMessageDto } from './bot.dto'
@@ -85,14 +86,13 @@ export class BotService implements OnModuleInit {
       if (!state) {
         throw new NotFoundError(`No Bot connected.`)
       }
-      console.log('state: ', state)
 
       const unwanted_code = state?.creds?.me?.id?.replace(/^\d+/, '')
       const phone_number = state?.creds?.me?.id.replace(unwanted_code, '')
       const user_id = state?.creds?.me?.id
 
       const botToInsert = new this.botModel()
-      botToInsert.name = data.name
+      botToInsert.name = data?.name || phone_number
       botToInsert.api_key = api_key
       botToInsert.phone = phone_number
       botToInsert.user_id = user_id
@@ -108,17 +108,17 @@ export class BotService implements OnModuleInit {
         api_key
       })
     } catch (error) {
-      console.log('error adsadad: ', error)
+      console.log('error : ', error)
       throw new HttpException(error?.response || error, error?.meta?.statusCode ? error?.meta?.statusCode : 500)
     }
   }
 
-  async sendMessage(data: SendMessageDto) {
+  async sendMessage(data: SendMessageDto, token: string) {
     try {
-      const bot = this.sessions.find((b) => b.api_key === data.token)
+      const isValidToken = validateToken(token)
 
-      if (!bot) {
-        throw new NotFoundException('Token Invalid')
+      if (!isValidToken) {
+        throw new UnauthorizedException('Invalid Token')
       }
 
       const chat_id = data.phone?.includes('@') ? data.phone : `${data.phone}@s.whatsapp.net`

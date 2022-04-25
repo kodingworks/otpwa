@@ -1,4 +1,5 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common'
+import { HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common'
+import { validateToken } from 'src/shared/helper/token-validator'
 import { BotService } from '../bot/bot.service'
 import { RedisService } from '../redis/redis.service'
 import { generateRandomCode, getDefaultContent, getNowString, hash } from '../shared/helper/hash'
@@ -15,14 +16,19 @@ export class OtpService {
    *
    * @param {*} data
    */
-  async create(data: CreateOtpDto) {
+  async create(data: CreateOtpDto, token: string) {
     const {
-      bot_token,
       phone,
       otp_length = 6,
       expires_in = 300, // by default, auth codes expire after 300s (5 minutes)
       content = getDefaultContent() // default string content of the phone template to send
     } = data
+
+    const isValidToken = validateToken(token)
+
+    if (!isValidToken) {
+      throw new UnauthorizedException('Invalid Token')
+    }
 
     /**
      * The code should be a random 6-digit number
@@ -73,14 +79,14 @@ export class OtpService {
        * For now, only `phone` target_type is supported
        */
 
-      const default_bot_token = process.env.DEFAULT_BOT_TOKEN
-
       await this.botService
-        .sendMessage({
-          token: bot_token || default_bot_token,
-          message: text,
-          phone
-        })
+        .sendMessage(
+          {
+            message: text,
+            phone
+          },
+          token
+        )
         .then((resp) => {
           return resp
         })
@@ -95,7 +101,7 @@ export class OtpService {
         }
       )
     } catch (error) {
-      throw new HttpException(error?.response || error, error?.response?.statusCode ? error?.response?.statusCode : 500)
+      throw new HttpException(error?.response || error, error?.meta?.statusCode ? error?.meta?.statusCode : 500)
     }
   }
 
@@ -107,9 +113,14 @@ export class OtpService {
    *
    * @param {*} data
    */
-  async verify(data: VerifyOtpDto) {
+  async verify(data: VerifyOtpDto, token: string) {
     const { phone, code } = data
 
+    const isValidToken = validateToken(token)
+
+    if (!isValidToken) {
+      throw new UnauthorizedException('Invalid Token')
+    }
     /**
      * Only the hashed data is ever compared. We don't care about the original data
      * and did not even save it in the database for security reasons.
@@ -180,7 +191,7 @@ export class OtpService {
        * issues that it could lead to.
        */
       // throw error
-      throw new HttpException(error?.response || error, error?.response?.statusCode ? error?.response?.statusCode : 500)
+      throw new HttpException(error?.response || error, error?.meta?.statusCode ? error?.meta?.statusCode : 500)
     }
   }
 }
