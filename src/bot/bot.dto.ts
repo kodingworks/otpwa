@@ -1,3 +1,6 @@
+import * as Joi from 'joi'
+import { JoiSchema } from 'nestjs-joi'
+
 export interface CreateNewBotDto {
   name: string
 }
@@ -17,8 +20,10 @@ export interface BotSessionDto {
   status: string
 }
 
-export interface SendMessageDto {
-  token: string
-  message: string
+export class SendMessageDto {
+  @JoiSchema(Joi.string().required())
   phone: string
+
+  @JoiSchema(Joi.string().optional())
+  message: string
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, Post } from '@nestjs/common'
+import { Body, Controller, Headers, HttpCode, Post } from '@nestjs/common'
 import { CreateOtpDto, VerifyOtpDto } from './otp.dto'
 import { OtpService } from './otp.service'
 
@@ -8,13 +8,13 @@ export class OtpController {
 
   @Post()
   @HttpCode(200)
-  create(@Body() createOtpDto: CreateOtpDto) {
-    return this.otpService.create(createOtpDto)
+  create(@Body() createOtpDto: CreateOtpDto, @Headers('Authorization') token: string) {
+    return this.otpService.create(createOtpDto, token)
   }
 
   @Post('/verify')
   @HttpCode(200)
-  verify(@Body() verifyOtpDto: VerifyOtpDto) {
-    return this.otpService.verify(verifyOtpDto)
+  verify(@Body() verifyOtpDto: VerifyOtpDto, @Headers('Authorization') token: string) {
+    return this.otpService.verify(verifyOtpDto, token)
   }
 }
