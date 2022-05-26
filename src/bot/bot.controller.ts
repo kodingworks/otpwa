@@ -1,4 +1,5 @@
-import { Body, Controller, Headers, Post } from '@nestjs/common'
+import { Body, Controller, Get, Headers, Post, Req } from '@nestjs/common'
+import { Request } from 'express'
 import { SendMessageDto } from './bot.dto'
 import { BotService } from './bot.service'
 
@@ -9,5 +10,10 @@ export class BotController {
   @Post('send')
   async sendMessage(@Body() data: SendMessageDto, @Headers('Authorization') token: string) {
     return await this.botService.sendMessage(data, token)
+  }
+
+  @Get('qr')
+  async getQRImage(@Req() req: Request, @Headers('Authorization') token: string) {
+    return await this.botService.getQRImage(req, token)
   }
 }

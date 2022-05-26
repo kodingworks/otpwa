@@ -3,18 +3,22 @@ import { Boom } from '@hapi/boom'
 import { HttpException, Injectable, OnModuleInit, UnauthorizedException } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import * as colors from 'colors'
+import { Request } from 'express'
 import * as figlet from 'figlet'
 import * as fs from 'fs'
 import { Model } from 'mongoose'
+import { resolve } from 'path'
+import * as qrcode from 'qrcode'
 import { validateToken } from 'src/shared/helper/token-validator'
 import { NotFoundError } from 'src/shared/provider/error-provider'
 import { OkResponse } from '../shared/provider/response-provider'
-import { BotSessionDto, CreateNewBotDto, SendMessageDto } from './bot.dto'
+import { BotSessionDto, BotStatusEnum, CreateNewBotDto, SendMessageDto } from './bot.dto'
 import { Bot, BotDocument } from './bot.model'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const generateApiKey = require('generate-api-key')
 
 let sock
+let status = BotStatusEnum.OFFLINE
 
 const authFileJsonPath = './auth_info_multi.json'
 const { state, saveState } = useSingleFileAuthState(authFileJsonPath)
@@ -36,10 +40,13 @@ async function connectToWhatsApp() {
     auth: state
   })
 
+  console.log('sock : ', sock.ev)
+
   sock.ev.on('connection.update', (update) => {
-    const { connection, lastDisconnect } = update
+    const { connection, lastDisconnect, qr } = update
 
     if (connection === 'close') {
+      status = BotStatusEnum.OFFLINE
       const shouldReconnect = (lastDisconnect.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut
       console.log('connection closed due to ', lastDisconnect.error, ', reconnecting ', shouldReconnect)
       // reconnect if not logged out
@@ -48,7 +55,24 @@ async function connectToWhatsApp() {
         connectToWhatsApp()
       }
     } else if (connection === 'open') {
+      status = BotStatusEnum.ONLINE
       console.log(colors.green(figlet.textSync('Bot Connected', { horizontalLayout: 'full' })))
+    }
+
+    if (qr) {
+      // if the 'qr' property is available on 'conn'
+      console.info('QR Generated')
+
+      qrcode.toFile(resolve(__dirname, '../../qr', 'qr.png'), qr, {
+        width: 500,
+        output: 'png'
+      } as qrcode.QRCodeToFileOptions) // generate the file
+    } else if (connection && connection === 'close') {
+      // when websocket is closed
+      if (fs.existsSync(resolve(__dirname, '../../qr', 'qr.png'))) {
+        // and, the QR file is exists
+        fs.unlinkSync(resolve(__dirname, '../../qr', 'qr.png')) // delete it
+      }
     }
   })
 
@@ -115,9 +139,9 @@ export class BotService implements OnModuleInit {
 
   async sendMessage(data: SendMessageDto, token: string) {
     try {
-      const isValidToken = validateToken(token)
+      const is_valid_token = validateToken(token)
 
-      if (!isValidToken) {
+      if (!is_valid_token) {
         throw new UnauthorizedException('Invalid Token')
       }
 
@@ -128,6 +152,33 @@ export class BotService implements OnModuleInit {
     } catch (error) {
       throw new HttpException(error?.response || error, error?.response?.statusCode ? error?.response?.statusCode : 500)
     }
+  }
+
+  async getQRImage(req: Request, token: string) {
+    const base_url = `${req.protocol}://${req.get('Host')}`
+    const is_valid_token = validateToken(token)
+    const is_connected = status === BotStatusEnum.ONLINE
+
+    if (!is_valid_token) {
+      throw new UnauthorizedException('Invalid Token')
+    }
+
+    let message = 'Your bot is offline.'
+    let qr_image_url = base_url + '/qr/qr.png'
+    if (is_connected) {
+      message = 'Your bot is online.'
+      qr_image_url = null
+    }
+
+    return new OkResponse(
+      {
+        status,
+        qr_image_url
+      },
+      {
+        message
+      }
+    )
   }
 
   private mapToSessionDto(data: BotDocument): BotSessionDto {
