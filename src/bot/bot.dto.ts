@@ -17,7 +17,6 @@ export interface BotSessionDto {
   phone: string
   api_key: string
   user_id: string
-  status: string
 }
 
 export class SendMessageDto {

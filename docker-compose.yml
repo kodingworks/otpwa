@@ -1,10 +1,10 @@
-version: '3.9'
+version: '3.3'
 services:
   redis-server:
     image: redis
     container_name: redis-server
     ports:
-      - '6379:6379'
+      - '6380:6380'
     volumes:
       - ./redis-service/config/redis.conf:/redis.conf
     command: ['redis-server', '/redis.conf']
@@ -19,14 +19,14 @@ services:
       - PORT=${PORT}
       - DB_URL=${DB_URL}
       - DB_NAME=${DB_NAME}
-      - REDIS_TTL=${REDIS_TTL}
       - ENCRYPTION_ALGORITHM=${ENCRYPTION_ALGORITHM}
       - ENCRYPTION_SECRET=${ENCRYPTION_SECRET}
       - TOKEN=${TOKEN}
-      - REDIS_HOST=${REDIS_HOST}
-      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_TTL=604800 # Default 7 Days
+      - REDIS_HOST=redis-server
+      - REDIS_PORT=6380
     ports:
-      - '3000:3000' # expose-to-the-world : only-in-the-docker
+      - '4125:4125' # expose-to-the-world : only-in-the-docker
     container_name: otpwa
     # depends_on:
     # -

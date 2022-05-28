@@ -1,11 +1,16 @@
 import { Body, Controller, Get, Headers, Post, Req } from '@nestjs/common'
 import { Request } from 'express'
-import { SendMessageDto } from './bot.dto'
+import { CreateNewBotDto, SendMessageDto } from './bot.dto'
 import { BotService } from './bot.service'
 
 @Controller('whatsapp')
 export class BotController {
   constructor(private readonly botService: BotService) {}
+
+  @Post('bot')
+  async create(@Body() data: CreateNewBotDto, @Headers('Authorization') token: string) {
+    return await this.botService.createBot(data, token)
+  }
 
   @Post('send')
   async sendMessage(@Body() data: SendMessageDto, @Headers('Authorization') token: string) {
