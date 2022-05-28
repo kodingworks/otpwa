@@ -10,7 +10,7 @@ import { RedisService } from './redis.service'
           store: redisStore,
           host: process.env.REDIS_HOST,
           port: process.env.REDIS_PORT,
-          ttl: Number(process.env.REDIS_TTL || 600) // set default 600 seconds
+          ttl: Number(process.env.REDIS_TTL || 300) // set default 600 seconds
         }
       }
     })
