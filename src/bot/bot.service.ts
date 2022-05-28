@@ -172,7 +172,6 @@ export class BotService implements OnModuleInit {
 
     return new OkResponse(
       {
-        status,
         qr_image_url
       },
       {
