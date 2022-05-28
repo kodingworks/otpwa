@@ -7,7 +7,10 @@ services:
       - '6380:6380'
     volumes:
       - ./redis-service/config/redis.conf:/redis.conf
-    command: ['redis-server', '/redis.conf']
+    command: --port 6380
+    expose:
+      - '6380'
+  #    command: ['redis-server', '/redis.conf']
 
   otpwa:
     build:
@@ -17,8 +20,6 @@ services:
     environment:
       - TZ=${TZ}
       - PORT=${PORT}
-      - DB_URL=${DB_URL}
-      - DB_NAME=${DB_NAME}
       - ENCRYPTION_ALGORITHM=sha256
       - ENCRYPTION_SECRET=${ENCRYPTION_SECRET}
       - TOKEN=${TOKEN}
