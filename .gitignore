@@ -47,3 +47,5 @@ yarn-error.log
 package-lock.json
 
 auth_info_multi.json
+
+dist.zip
