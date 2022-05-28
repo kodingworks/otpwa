@@ -8,8 +8,7 @@ import { RedisService } from './redis.service'
       useFactory: () => {
         return {
           store: redisStore,
-          // host: process.env.REDIS_HOST,
-          host: '127.0.0.1',
+          host: process.env.REDIS_HOST,
           port: process.env.REDIS_PORT,
           ttl: Number(process.env.REDIS_TTL || 300) // set default 600 seconds
         }
