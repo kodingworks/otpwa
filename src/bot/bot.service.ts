@@ -181,6 +181,29 @@ export class BotService implements OnModuleInit {
     )
   }
 
+  async getConnectionStatus(token: string) {
+    const is_valid_token = validateToken(token)
+    const is_connected = status === BotStatusEnum.ONLINE
+
+    if (!is_valid_token) {
+      throw new UnauthorizedException('Invalid Token')
+    }
+
+    let message = 'Your bot is offline.'
+    if (is_connected) {
+      message = 'Your bot is online.'
+    }
+
+    return new OkResponse(
+      {
+        status
+      },
+      {
+        message
+      }
+    )
+  }
+
   private mapToSessionDto(data: BotDocument): BotSessionDto {
     return {
       id: `${data._id}`,

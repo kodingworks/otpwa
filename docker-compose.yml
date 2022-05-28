@@ -12,26 +12,26 @@ services:
     build:
       context: ./
       dockerfile: ./Dockerfile
-    image: arifwidiantokodingworks/otpwa:latest
+    image: kodingworks/otpwa:latest
     environment:
       - TZ=${TZ}
       - PORT=${PORT}
       - DB_URL=${DB_URL}
       - DB_NAME=${DB_NAME}
       - REDIS_TTL=${REDIS_TTL}
-      - ENCRYPTION_ALGORITHM=sha256
+      - ENCRYPTION_ALGORITHM=${ENCRYPTION_ALGORITHM}
       - ENCRYPTION_SECRET=${ENCRYPTION_SECRET}
       - TOKEN=${TOKEN}
-      - REDIS_HOST=redis-server
-      - REDIS_PORT=6379
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
     ports:
       - '3000:3000' # expose-to-the-world : only-in-the-docker
-    container_name: otpwa-app
+    container_name: otpwa
     # depends_on:
     # -
     volumes:
-      - ./otpwa
-      - ./node_modules
+      - ./:/otpwa
+      - ./:/node_modules
 
 volumes:
   redis-data:

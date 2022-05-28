@@ -16,4 +16,9 @@ export class BotController {
   async getQRImage(@Req() req: Request, @Headers('Authorization') token: string) {
     return await this.botService.getQRImage(req, token)
   }
+
+  @Get('status')
+  async getConnectionStatus(@Headers('Authorization') token: string) {
+    return await this.botService.getConnectionStatus(token)
+  }
 }
