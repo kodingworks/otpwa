@@ -63,6 +63,10 @@ $ yarn run test:cov
 Use the [Docker Compose](https://docs.docker.com/compose/) to run this project using Docker.
 
 ```
+# Build the App first
+$ docker-compose build --no-cache
+
+# Run the app
 $ docker-compose up -d
 ```
 
