@@ -27,7 +27,7 @@ services:
       - REDIS_HOST=redis-server
       - REDIS_PORT=6380
     ports:
-      - '4125:4125' # expose-to-the-world : only-in-the-docker
+      - '3000:3000' # expose-to-the-world : only-in-the-docker
     container_name: otpwa
     # depends_on:
     # -
