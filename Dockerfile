@@ -6,7 +6,7 @@ WORKDIR /usr/src/app
 # Install app dependencies
 # A wildcard is used to ensure both package.json AND package-lock.json are copied
 # where available (npm@5+)
-COPY tsconfig.json tsconfig.build.json yarn.lock nest-cli.json .env package*.json ./
+COPY tsconfig.json tsconfig.build.json yarn.lock nest-cli.json package*.json ./
 
 RUN apk add --no-cache git
 RUN npm install yarn -g --force
