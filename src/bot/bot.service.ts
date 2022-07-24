@@ -1,19 +1,19 @@
 import makeWASocket, { DisconnectReason, useSingleFileAuthState } from '@adiwajshing/baileys'
 import { Boom } from '@hapi/boom'
 import { HttpException, Injectable, OnModuleInit, UnauthorizedException } from '@nestjs/common'
-import { InjectModel } from '@nestjs/mongoose'
 import * as colors from 'colors'
 import { Request } from 'express'
 import * as figlet from 'figlet'
-import * as fs from 'fs'
-import { Model } from 'mongoose'
-import { resolve } from 'path'
+import * as fs from 'fs-extra'
+import { readFile } from 'fs/promises'
+import { join, resolve } from 'path'
 import * as qrcode from 'qrcode'
 import { validateToken } from 'src/shared/helper/token-validator'
 import { NotFoundError } from 'src/shared/provider/error-provider'
+import { v4 as uuid } from 'uuid'
 import { OkResponse } from '../shared/provider/response-provider'
 import { BotSessionDto, BotStatusEnum, CreateNewBotDto, SendMessageDto } from './bot.dto'
-import { Bot, BotDocument } from './bot.model'
+import { Bot } from './bot.model'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const generateApiKey = require('generate-api-key')
 
@@ -39,8 +39,6 @@ async function connectToWhatsApp() {
     printQRInTerminal: true,
     auth: state
   })
-
-  console.log('sock : ', sock.ev)
 
   sock.ev.on('connection.update', (update) => {
     const { connection, lastDisconnect, qr } = update
@@ -89,18 +87,22 @@ async function connectToWhatsApp() {
 export class BotService implements OnModuleInit {
   private sessions: BotSessionDto[] = []
 
-  constructor(@InjectModel(Bot.name) private readonly botModel: Model<BotDocument>) {}
-
   async onModuleInit() {
-    const botDocs = await this.botModel.find()
+    const botDocs = JSON.parse(await readFile(join(process.cwd(), 'bots.json'), 'utf8'))
     this.sessions = botDocs.map((doc) => this.mapToSessionDto(doc))
 
     connectToWhatsApp()
   }
 
-  async createBot(data: CreateNewBotDto) {
+  async createBot(data: CreateNewBotDto, token: string) {
     try {
+      const is_valid_token = validateToken(token)
+
+      if (!is_valid_token) {
+        throw new UnauthorizedException('Invalid Token')
+      }
       console.log(`Create Bot ${data.name}`)
+
       const api_key = generateApiKey({
         method: 'bytes',
         prefix: 'p.iobot_',
@@ -115,13 +117,17 @@ export class BotService implements OnModuleInit {
       const phone_number = state?.creds?.me?.id.replace(unwanted_code, '')
       const user_id = state?.creds?.me?.id
 
-      const botToInsert = new this.botModel()
+      const botToInsert = new Bot()
+
+      botToInsert.id = uuid()
       botToInsert.name = data?.name || phone_number
       botToInsert.api_key = api_key
       botToInsert.phone = phone_number
       botToInsert.user_id = user_id
 
-      await botToInsert.save()
+      this.sessions.push(botToInsert)
+
+      fs.writeJSONSync(join(process.cwd(), 'bots.json'), this.sessions)
 
       const isTokenAlreadyExists = this.sessions.find((b) => b.api_key === api_key || b.id === user_id)
       if (!isTokenAlreadyExists) {
@@ -203,14 +209,13 @@ export class BotService implements OnModuleInit {
     )
   }
 
-  private mapToSessionDto(data: BotDocument): BotSessionDto {
+  private mapToSessionDto(data: Bot): BotSessionDto {
     return {
-      id: `${data._id}`,
+      id: data.id,
       name: data.name,
       phone: data.phone,
       api_key: data.api_key,
-      user_id: data.user_id,
-      status: data.status
+      user_id: data.user_id
     }
   }
 }

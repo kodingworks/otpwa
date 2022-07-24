@@ -20,7 +20,7 @@
   <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
 </p>
   <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)--> -->
+  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
 ## Description
 
@@ -63,6 +63,10 @@ $ yarn run test:cov
 Use the [Docker Compose](https://docs.docker.com/compose/) to run this project using Docker.
 
 ```
+# Build the App first
+$ docker-compose build --no-cache
+
+# Run the app
 $ docker-compose up -d
 ```
 
