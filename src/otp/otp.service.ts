@@ -131,6 +131,7 @@ export class OtpService {
 
     try {
       const saved: OtpDto = (await this.cacheManager.get(hashed_target_string)) as OtpDto
+      console.log('saved: ', saved)
 
       /**
        * This input doesn't even match an entry in the database. Maybe:
@@ -172,6 +173,7 @@ export class OtpService {
        * - the encryption key was changed
        * - the hash function gave a different result for some other reason
        */
+
       if (hashed_code !== saved.code) {
         throw new BadRequestError('Invalid OTP.', {
           errorCode: ErrorCodeEnum.ERROR_OTP_INVALID
