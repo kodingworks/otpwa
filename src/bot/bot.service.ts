@@ -1,20 +1,24 @@
 import makeWASocket, { DisconnectReason, useSingleFileAuthState } from '@adiwajshing/baileys'
 import { Boom } from '@hapi/boom'
 import { HttpException, Injectable, OnModuleInit, UnauthorizedException } from '@nestjs/common'
-import { InjectModel } from '@nestjs/mongoose'
 import * as colors from 'colors'
+import { Request } from 'express'
 import * as figlet from 'figlet'
-import * as fs from 'fs'
-import { Model } from 'mongoose'
+import * as fs from 'fs-extra'
+import { readFile } from 'fs/promises'
+import { join, resolve } from 'path'
+import * as qrcode from 'qrcode'
 import { validateToken } from 'src/shared/helper/token-validator'
 import { NotFoundError } from 'src/shared/provider/error-provider'
+import { v4 as uuid } from 'uuid'
 import { OkResponse } from '../shared/provider/response-provider'
-import { BotSessionDto, CreateNewBotDto, SendMessageDto } from './bot.dto'
-import { Bot, BotDocument } from './bot.model'
+import { BotSessionDto, BotStatusEnum, CreateNewBotDto, SendMessageDto } from './bot.dto'
+import { Bot } from './bot.model'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const generateApiKey = require('generate-api-key')
 
 let sock
+let status = BotStatusEnum.OFFLINE
 
 const authFileJsonPath = './auth_info_multi.json'
 const { state, saveState } = useSingleFileAuthState(authFileJsonPath)
@@ -37,9 +41,10 @@ async function connectToWhatsApp() {
   })
 
   sock.ev.on('connection.update', (update) => {
-    const { connection, lastDisconnect } = update
+    const { connection, lastDisconnect, qr } = update
 
     if (connection === 'close') {
+      status = BotStatusEnum.OFFLINE
       const shouldReconnect = (lastDisconnect.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut
       console.log('connection closed due to ', lastDisconnect.error, ', reconnecting ', shouldReconnect)
       // reconnect if not logged out
@@ -48,7 +53,24 @@ async function connectToWhatsApp() {
         connectToWhatsApp()
       }
     } else if (connection === 'open') {
+      status = BotStatusEnum.ONLINE
       console.log(colors.green(figlet.textSync('Bot Connected', { horizontalLayout: 'full' })))
+    }
+
+    if (qr) {
+      // if the 'qr' property is available on 'conn'
+      console.info('QR Generated')
+
+      qrcode.toFile(resolve(__dirname, '../../qr', 'qr.png'), qr, {
+        width: 500,
+        output: 'png'
+      } as qrcode.QRCodeToFileOptions) // generate the file
+    } else if (connection && connection === 'close') {
+      // when websocket is closed
+      if (fs.existsSync(resolve(__dirname, '../../qr', 'qr.png'))) {
+        // and, the QR file is exists
+        fs.unlinkSync(resolve(__dirname, '../../qr', 'qr.png')) // delete it
+      }
     }
   })
 
@@ -65,18 +87,22 @@ async function connectToWhatsApp() {
 export class BotService implements OnModuleInit {
   private sessions: BotSessionDto[] = []
 
-  constructor(@InjectModel(Bot.name) private readonly botModel: Model<BotDocument>) {}
-
   async onModuleInit() {
-    const botDocs = await this.botModel.find()
+    const botDocs = JSON.parse(await readFile(join(process.cwd(), 'bots.json'), 'utf8'))
     this.sessions = botDocs.map((doc) => this.mapToSessionDto(doc))
 
     connectToWhatsApp()
   }
 
-  async createBot(data: CreateNewBotDto) {
+  async createBot(data: CreateNewBotDto, token: string) {
     try {
+      const is_valid_token = validateToken(token)
+
+      if (!is_valid_token) {
+        throw new UnauthorizedException('Invalid Token')
+      }
       console.log(`Create Bot ${data.name}`)
+
       const api_key = generateApiKey({
         method: 'bytes',
         prefix: 'p.iobot_',
@@ -91,13 +117,17 @@ export class BotService implements OnModuleInit {
       const phone_number = state?.creds?.me?.id.replace(unwanted_code, '')
       const user_id = state?.creds?.me?.id
 
-      const botToInsert = new this.botModel()
+      const botToInsert = new Bot()
+
+      botToInsert.id = uuid()
       botToInsert.name = data?.name || phone_number
       botToInsert.api_key = api_key
       botToInsert.phone = phone_number
       botToInsert.user_id = user_id
 
-      await botToInsert.save()
+      this.sessions.push(botToInsert)
+
+      fs.writeJSONSync(join(process.cwd(), 'bots.json'), this.sessions)
 
       const isTokenAlreadyExists = this.sessions.find((b) => b.api_key === api_key || b.id === user_id)
       if (!isTokenAlreadyExists) {
@@ -115,9 +145,9 @@ export class BotService implements OnModuleInit {
 
   async sendMessage(data: SendMessageDto, token: string) {
     try {
-      const isValidToken = validateToken(token)
+      const is_valid_token = validateToken(token)
 
-      if (!isValidToken) {
+      if (!is_valid_token) {
         throw new UnauthorizedException('Invalid Token')
       }
 
@@ -130,14 +160,62 @@ export class BotService implements OnModuleInit {
     }
   }
 
-  private mapToSessionDto(data: BotDocument): BotSessionDto {
+  async getQRImage(req: Request, token: string) {
+    const base_url = `${req.protocol}://${req.get('Host')}`
+    const is_valid_token = validateToken(token)
+    const is_connected = status === BotStatusEnum.ONLINE
+
+    if (!is_valid_token) {
+      throw new UnauthorizedException('Invalid Token')
+    }
+
+    let message = 'Your bot is offline.'
+    let qr_image_url = base_url + '/qr/qr.png'
+    if (is_connected) {
+      message = 'Your bot is online.'
+      qr_image_url = null
+    }
+
+    return new OkResponse(
+      {
+        qr_image_url
+      },
+      {
+        message
+      }
+    )
+  }
+
+  async getConnectionStatus(token: string) {
+    const is_valid_token = validateToken(token)
+    const is_connected = status === BotStatusEnum.ONLINE
+
+    if (!is_valid_token) {
+      throw new UnauthorizedException('Invalid Token')
+    }
+
+    let message = 'Your bot is offline.'
+    if (is_connected) {
+      message = 'Your bot is online.'
+    }
+
+    return new OkResponse(
+      {
+        status
+      },
+      {
+        message
+      }
+    )
+  }
+
+  private mapToSessionDto(data: Bot): BotSessionDto {
     return {
-      id: `${data._id}`,
+      id: data.id,
       name: data.name,
       phone: data.phone,
       api_key: data.api_key,
-      user_id: data.user_id,
-      status: data.status
+      user_id: data.user_id
     }
   }
 }

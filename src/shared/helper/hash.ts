@@ -50,7 +50,7 @@ export function hash(string) {
   const { ENCRYPTION_SECRET, ENCRYPTION_ALGORITHM = 'sha256' } = process.env
 
   if (ENCRYPTION_SECRET) {
-    return crypto.createHmac(ENCRYPTION_ALGORITHM, ENCRYPTION_SECRET)
+    return crypto.createHmac(ENCRYPTION_ALGORITHM, ENCRYPTION_SECRET).digest('base64')
   }
 
   return crypto.createHash(ENCRYPTION_ALGORITHM).update(string, 'utf-8').digest('base64')
