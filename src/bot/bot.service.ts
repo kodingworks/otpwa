@@ -8,9 +8,9 @@ import * as fs from 'fs-extra'
 import { readFile } from 'fs/promises'
 import { join, resolve } from 'path'
 import * as qrcode from 'qrcode'
-import { validateToken } from 'src/shared/helper/token-validator'
-import { NotFoundError } from 'src/shared/provider/error-provider'
 import { v4 as uuid } from 'uuid'
+import { validateToken } from '../shared/helper/token-validator'
+import { InternalServerError, NotFoundError } from '../shared/provider/error-provider'
 import { OkResponse } from '../shared/provider/response-provider'
 import { BotSessionDto, BotStatusEnum, CreateNewBotDto, SendMessageDto } from './bot.dto'
 import { Bot } from './bot.model'
@@ -83,15 +83,19 @@ async function connectToWhatsApp() {
   sock.ev.on('creds.update', saveState)
 }
 
+const isEnableWhatsAppBot = process.env.DISABLE_WHATSAPP_BOT === 'true'
+
 @Injectable()
 export class BotService implements OnModuleInit {
   private sessions: BotSessionDto[] = []
 
   async onModuleInit() {
-    const botDocs = JSON.parse(await readFile(join(process.cwd(), 'bots.json'), 'utf8'))
-    this.sessions = botDocs.map((doc) => this.mapToSessionDto(doc))
+    if (isEnableWhatsAppBot) {
+      const botDocs = JSON.parse(await readFile(join(process.cwd(), 'bots.json'), 'utf8'))
+      this.sessions = botDocs.map((doc) => this.mapToSessionDto(doc))
 
-    connectToWhatsApp()
+      connectToWhatsApp()
+    }
   }
 
   async createBot(data: CreateNewBotDto, token: string) {
@@ -101,7 +105,6 @@ export class BotService implements OnModuleInit {
       if (!is_valid_token) {
         throw new UnauthorizedException('Invalid Token')
       }
-      console.log(`Create Bot ${data.name}`)
 
       const api_key = generateApiKey({
         method: 'bytes',
@@ -146,6 +149,10 @@ export class BotService implements OnModuleInit {
   async sendMessage(data: SendMessageDto, token: string) {
     try {
       const is_valid_token = validateToken(token)
+
+      if (!isEnableWhatsAppBot) {
+        throw new InternalServerError('Bot Not Enabled!')
+      }
 
       if (!is_valid_token) {
         throw new UnauthorizedException('Invalid Token')

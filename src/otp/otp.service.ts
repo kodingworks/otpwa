@@ -1,15 +1,18 @@
 import { HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common'
-import { validateToken } from 'src/shared/helper/token-validator'
 import { BotService } from '../bot/bot.service'
+import { NotificationService } from '../notification/notification.service'
+import { otpTemplate } from '../notification/template/email/otp'
 import { RedisService } from '../redis/redis.service'
 import { generateRandomCode, getDefaultContent, getNowString, hash } from '../shared/helper/hash'
+import { replaceMessage } from '../shared/helper/replace-message'
+import { validateToken } from '../shared/helper/token-validator'
 import { BadRequestError, ErrorCodeEnum } from '../shared/provider/error-provider'
 import { OkResponse } from '../shared/provider/response-provider'
-import { CreateOtpDto, OtpDto, VerifyOtpDto } from './otp.dto'
+import { CreateOtpDto, OtpDto, OTPTargetType, VerifyOtpDto } from './otp.dto'
 
 @Injectable()
 export class OtpService {
-  constructor(private cacheManager: RedisService, private botService: BotService) {}
+  constructor(private cacheManager: RedisService, private botService: BotService, private notificationService: NotificationService) {}
 
   /**
    * Initiate an account verification request
@@ -18,7 +21,7 @@ export class OtpService {
    */
   async create(data: CreateOtpDto, token: string) {
     const {
-      phone,
+      recipient,
       otp_length = 6,
       expires_in = 300, // by default, auth codes expire after 300s (5 minutes)
       content = getDefaultContent() // default string content of the phone template to send
@@ -57,12 +60,12 @@ export class OtpService {
        */
       const MAX_VALIDITY_IN_SECONDS = parseInt(process.env.REDIS_TTL) // 7 days, expressed in seconds
 
-      const hashed_target = hash(phone)
+      const hashed_target = hash(recipient)
       const hashed_target_string = hashed_target.toString()
       const hashed_code = hash(`${code}`)
       const expires_at = new Date(Math.floor(Date.now()) + expires_in * 1000).toISOString()
 
-      const target_type = 'phone'
+      const target_type = data?.target_type || process.env.DEFAULT_OTP_TARGET_TYPE
       const SK = `target#${target_type}#${hashed_target}`
 
       await this.cacheManager.set(hashed_target_string, {
@@ -75,24 +78,31 @@ export class OtpService {
         SK
       })
 
-      /**
-       * For now, only `phone` target_type is supported
-       */
-
-      await this.botService
-        .sendMessage(
-          {
-            message: text,
-            phone
-          },
-          token
-        )
-        .then((resp) => {
-          return resp
+      if (target_type === OTPTargetType.EMAIL) {
+        await this.notificationService.sendEmail({
+          message: replaceMessage(otpTemplate, {
+            otp: code,
+            company: 'Wirrrrr'
+          }),
+          to: data.recipient,
+          subject: 'OTP'
         })
-        .catch((err) => {
-          throw err
-        })
+      } else {
+        await this.botService
+          .sendMessage(
+            {
+              message: text,
+              phone: recipient
+            },
+            token
+          )
+          .then((resp) => {
+            return resp
+          })
+          .catch((err) => {
+            throw err
+          })
+      }
 
       return new OkResponse(
         { success: true },
