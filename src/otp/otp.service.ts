@@ -77,15 +77,16 @@ export class OtpService {
         expires_at,
         SK
       })
+      const companyName = process.env.COMPANY_NAME || 'OTPWA'
 
       if (target_type === OTPTargetType.EMAIL) {
         await this.notificationService.sendEmail({
           message: replaceMessage(otpTemplate, {
             otp: code,
-            company: 'Wirrrrr'
+            company: companyName
           }),
           to: data.recipient,
-          subject: 'OTP'
+          subject: `OTP - ${companyName}`
         })
       } else {
         await this.botService
