@@ -25,7 +25,7 @@ export class CreateOtpDto {
 
 export class VerifyOtpDto {
   @JoiSchema(Joi.string().required())
-  phone: string
+  recipient: string
 
   @JoiSchema(Joi.string().required())
   code: string

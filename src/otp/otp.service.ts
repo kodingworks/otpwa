@@ -125,7 +125,7 @@ export class OtpService {
    * @param {*} data
    */
   async verify(data: VerifyOtpDto, token: string) {
-    const { phone, code } = data
+    const { recipient, code } = data
 
     const isValidToken = validateToken(token)
 
@@ -136,7 +136,7 @@ export class OtpService {
      * Only the hashed data is ever compared. We don't care about the original data
      * and did not even save it in the database for security reasons.
      */
-    const hashed_target = hash(phone)
+    const hashed_target = hash(recipient)
     const hashed_target_string = hashed_target.toString()
     const hashed_code = hash(`${code}`)
 
