@@ -83,7 +83,7 @@ async function connectToWhatsApp() {
   sock.ev.on('creds.update', saveState)
 }
 
-const isEnableWhatsAppBot = process.env.DISABLE_WHATSAPP_BOT === 'true'
+const isEnableWhatsAppBot = process.env.ENABLE_WHATSAPP_BOT === 'true'
 
 @Injectable()
 export class BotService implements OnModuleInit {
