@@ -7,11 +7,34 @@ export enum OTPTargetType {
 }
 
 export class CreateOtpDto {
-  @JoiSchema(Joi.string().optional())
+  @JoiSchema(Joi.string().optional().allow(null, OTPTargetType.EMAIL, OTPTargetType.PHONE))
   target_type?: string
 
-  @JoiSchema(Joi.string().required())
-  recipient: string
+  @JoiSchema(
+    Joi.when('recipient', {
+      is: '',
+      then: Joi.string().required(),
+      otherwise: Joi.string().optional().allow(null)
+    }).when('recipient', {
+      is: null,
+      then: Joi.string().required(),
+      otherwise: Joi.string().optional().allow(null)
+    })
+  )
+  phone?: string
+
+  @JoiSchema(
+    Joi.when('recipient', {
+      is: '',
+      then: Joi.string().required(),
+      otherwise: Joi.string().optional().allow(null)
+    }).when('recipient', {
+      is: null,
+      then: Joi.string().required(),
+      otherwise: Joi.string().optional().allow(null)
+    })
+  )
+  recipient?: string
 
   @JoiSchema(Joi.string().optional())
   content?: string
@@ -24,8 +47,31 @@ export class CreateOtpDto {
 }
 
 export class VerifyOtpDto {
-  @JoiSchema(Joi.string().required())
-  recipient: string
+  @JoiSchema(
+    Joi.when('recipient', {
+      is: '',
+      then: Joi.string().required(),
+      otherwise: Joi.string().optional().allow(null)
+    }).when('recipient', {
+      is: null,
+      then: Joi.string().required(),
+      otherwise: Joi.string().optional().allow(null)
+    })
+  )
+  phone?: string
+
+  @JoiSchema(
+    Joi.when('phone', {
+      is: '',
+      then: Joi.string().required(),
+      otherwise: Joi.string().optional().allow(null)
+    }).when('phone', {
+      is: null,
+      then: Joi.string().required(),
+      otherwise: Joi.string().optional().allow(null)
+    })
+  )
+  recipient?: string
 
   @JoiSchema(Joi.string().required())
   code: string

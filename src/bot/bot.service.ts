@@ -9,6 +9,7 @@ import { readFile } from 'fs/promises'
 import { join, resolve } from 'path'
 import * as qrcode from 'qrcode'
 import { v4 as uuid } from 'uuid'
+import { NotificationService } from '../notification/notification.service'
 import { validateToken } from '../shared/helper/token-validator'
 import { InternalServerError, NotFoundError } from '../shared/provider/error-provider'
 import { OkResponse } from '../shared/provider/response-provider'
@@ -16,6 +17,8 @@ import { BotSessionDto, BotStatusEnum, CreateNewBotDto, SendMessageDto } from '.
 import { Bot } from './bot.model'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const generateApiKey = require('generate-api-key')
+const monitoringGroupChatId = process.env.MONITORING_GROUP_CHAT_ID
+const baseURL = process.env.BASE_URL
 
 let sock
 let status = BotStatusEnum.OFFLINE
@@ -40,10 +43,15 @@ async function connectToWhatsApp() {
     auth: state
   })
 
-  sock.ev.on('connection.update', (update) => {
+  sock.ev.on('connection.update', async (update) => {
+    const notificationService = new NotificationService()
+
     const { connection, lastDisconnect, qr } = update
 
     if (connection === 'close') {
+      const botDisconnectErrorMessage = `[${baseURL}][🔴 Down] - BOTNYA TERPUTUS CUY, BENERIN GIH! 🙂`
+      await notificationService.sendErrorReportMessageToTelegram(monitoringGroupChatId, botDisconnectErrorMessage)
+
       status = BotStatusEnum.OFFLINE
       const shouldReconnect = (lastDisconnect.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut
       console.log('connection closed due to ', lastDisconnect.error, ', reconnecting ', shouldReconnect)
@@ -53,6 +61,9 @@ async function connectToWhatsApp() {
         connectToWhatsApp()
       }
     } else if (connection === 'open') {
+      const botDisconnectErrorMessage = `[${baseURL}][✅ Up] - Nah mantab, botnya udah terhubung! 🥶`
+      await notificationService.sendErrorReportMessageToTelegram(monitoringGroupChatId, botDisconnectErrorMessage)
+
       status = BotStatusEnum.ONLINE
       console.log(colors.green(figlet.textSync('Bot Connected', { horizontalLayout: 'full' })))
     }

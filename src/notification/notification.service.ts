@@ -1,11 +1,16 @@
 import { SendRawEmailCommand, SES } from '@aws-sdk/client-ses'
 import { Injectable, Logger } from '@nestjs/common'
 // import * as AWS from 'aws-sdk'
+import { Telegraf } from 'telegraf'
+import { ExtraReplyMessage } from 'telegraf/typings/telegram-types'
 import { SendEmailDto } from './notification.dto'
+
 const nodemailer = require('nodemailer')
 
 @Injectable()
 export class NotificationService {
+  telegramBot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN)
+
   async sendEmail(data: SendEmailDto) {
     try {
       const ses = new SES({
@@ -53,5 +58,18 @@ export class NotificationService {
     } catch (error) {
       Logger.error(`NOTIFICATION | Failed to Send Email => ${error}`)
     }
+  }
+
+  async sendErrorReportMessageToTelegram(chatId: number | string, message: string, extra?: ExtraReplyMessage) {
+    return this.telegramBot.telegram
+      .sendMessage(chatId, message, extra)
+      .then(() => {
+        Logger.log('NOTIFICATION | Send Error Report Message To Telegram Notification (Success)')
+      })
+      .catch((error) => {
+        Logger.error('NOTIFICATION | Telegram Bot Payload : ', JSON.stringify({ chatId, message }))
+        console.error(`NOTIFICATION | Error Telegram Send Error Report Message : `, { ...error })
+        throw error
+      })
   }
 }

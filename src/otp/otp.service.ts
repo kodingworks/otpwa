@@ -21,7 +21,6 @@ export class OtpService {
    */
   async create(data: CreateOtpDto, token: string) {
     const {
-      recipient,
       otp_length = 6,
       expires_in = 300, // by default, auth codes expire after 300s (5 minutes)
       content = getDefaultContent() // default string content of the phone template to send
@@ -47,6 +46,10 @@ export class OtpService {
     const text = content.replace(/\%code\%/g, code)
     const created_at = getNowString()
 
+    if (data?.phone?.length) {
+      data.recipient = data?.phone
+    }
+
     try {
       /**
        * To prevent security issues, we don't need to store any personal data
@@ -60,7 +63,7 @@ export class OtpService {
        */
       const MAX_VALIDITY_IN_SECONDS = parseInt(process.env.REDIS_TTL) // 7 days, expressed in seconds
 
-      const hashed_target = hash(recipient)
+      const hashed_target = hash(data.recipient)
       const hashed_target_string = hashed_target.toString()
       const hashed_code = hash(`${code}`)
       const expires_at = new Date(Math.floor(Date.now()) + expires_in * 1000).toISOString()
@@ -93,7 +96,7 @@ export class OtpService {
           .sendMessage(
             {
               message: text,
-              phone: recipient
+              phone: data?.recipient
             },
             token
           )
@@ -125,7 +128,11 @@ export class OtpService {
    * @param {*} data
    */
   async verify(data: VerifyOtpDto, token: string) {
-    const { recipient, code } = data
+    const { code } = data
+
+    if (data?.phone?.length) {
+      data.recipient = data?.phone
+    }
 
     const isValidToken = validateToken(token)
 
@@ -136,7 +143,7 @@ export class OtpService {
      * Only the hashed data is ever compared. We don't care about the original data
      * and did not even save it in the database for security reasons.
      */
-    const hashed_target = hash(recipient)
+    const hashed_target = hash(data.recipient)
     const hashed_target_string = hashed_target.toString()
     const hashed_code = hash(`${code}`)
 
