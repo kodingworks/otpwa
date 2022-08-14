@@ -69,6 +69,9 @@ async function connectToWhatsApp() {
     }
 
     if (qr) {
+      const botDisconnectErrorMessage = `[${baseURL}][🔴 Down] - BOTNYA TERPUTUS CUY, PERLU SCAN QR, BENERIN GIH! 🙂`
+      await notificationService.sendErrorReportMessageToTelegram(monitoringGroupChatId, botDisconnectErrorMessage)
+
       // if the 'qr' property is available on 'conn'
       console.info('QR Generated')
 
@@ -77,6 +80,9 @@ async function connectToWhatsApp() {
         output: 'png'
       } as qrcode.QRCodeToFileOptions) // generate the file
     } else if (connection && connection === 'close') {
+      const botDisconnectErrorMessage = `[${baseURL}][🔴 Down] - BOTNYA TERPUTUS CUY, PERLU SCAN QR, BENERIN GIH! 🙂`
+      await notificationService.sendErrorReportMessageToTelegram(monitoringGroupChatId, botDisconnectErrorMessage)
+
       // when websocket is closed
       if (fs.existsSync(resolve(__dirname, '../../qr', 'qr.png'))) {
         // and, the QR file is exists
