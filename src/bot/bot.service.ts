@@ -8,14 +8,17 @@ import * as fs from 'fs-extra'
 import { readFile } from 'fs/promises'
 import { join, resolve } from 'path'
 import * as qrcode from 'qrcode'
-import { validateToken } from 'src/shared/helper/token-validator'
-import { NotFoundError } from 'src/shared/provider/error-provider'
 import { v4 as uuid } from 'uuid'
+import { NotificationService } from '../notification/notification.service'
+import { validateToken } from '../shared/helper/token-validator'
+import { InternalServerError, NotFoundError } from '../shared/provider/error-provider'
 import { OkResponse } from '../shared/provider/response-provider'
 import { BotSessionDto, BotStatusEnum, CreateNewBotDto, SendMessageDto } from './bot.dto'
 import { Bot } from './bot.model'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const generateApiKey = require('generate-api-key')
+const monitoringGroupChatId = process.env.MONITORING_GROUP_CHAT_ID
+const baseURL = process.env.BASE_URL
 
 let sock
 let status = BotStatusEnum.OFFLINE
@@ -40,10 +43,15 @@ async function connectToWhatsApp() {
     auth: state
   })
 
-  sock.ev.on('connection.update', (update) => {
+  sock.ev.on('connection.update', async (update) => {
+    const notificationService = new NotificationService()
+
     const { connection, lastDisconnect, qr } = update
 
     if (connection === 'close') {
+      const botDisconnectErrorMessage = `[${baseURL}][🔴 Down] - BOTNYA TERPUTUS CUY, BENERIN GIH! 🙂`
+      await notificationService.sendErrorReportMessageToTelegram(monitoringGroupChatId, botDisconnectErrorMessage)
+
       status = BotStatusEnum.OFFLINE
       const shouldReconnect = (lastDisconnect.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut
       console.log('connection closed due to ', lastDisconnect.error, ', reconnecting ', shouldReconnect)
@@ -53,11 +61,17 @@ async function connectToWhatsApp() {
         connectToWhatsApp()
       }
     } else if (connection === 'open') {
+      const botDisconnectErrorMessage = `[${baseURL}][✅ Up] - Nah mantab, botnya udah terhubung! 🥶`
+      await notificationService.sendErrorReportMessageToTelegram(monitoringGroupChatId, botDisconnectErrorMessage)
+
       status = BotStatusEnum.ONLINE
       console.log(colors.green(figlet.textSync('Bot Connected', { horizontalLayout: 'full' })))
     }
 
     if (qr) {
+      const botDisconnectErrorMessage = `[${baseURL}][🔴 Down] - BOTNYA TERPUTUS CUY, PERLU SCAN QR, BENERIN GIH! 🙂`
+      await notificationService.sendErrorReportMessageToTelegram(monitoringGroupChatId, botDisconnectErrorMessage)
+
       // if the 'qr' property is available on 'conn'
       console.info('QR Generated')
 
@@ -66,6 +80,9 @@ async function connectToWhatsApp() {
         output: 'png'
       } as qrcode.QRCodeToFileOptions) // generate the file
     } else if (connection && connection === 'close') {
+      const botDisconnectErrorMessage = `[${baseURL}][🔴 Down] - BOTNYA TERPUTUS CUY, PERLU SCAN QR, BENERIN GIH! 🙂`
+      await notificationService.sendErrorReportMessageToTelegram(monitoringGroupChatId, botDisconnectErrorMessage)
+
       // when websocket is closed
       if (fs.existsSync(resolve(__dirname, '../../qr', 'qr.png'))) {
         // and, the QR file is exists
@@ -83,15 +100,19 @@ async function connectToWhatsApp() {
   sock.ev.on('creds.update', saveState)
 }
 
+const isEnableWhatsAppBot = process.env.ENABLE_WHATSAPP_BOT === 'true'
+
 @Injectable()
 export class BotService implements OnModuleInit {
   private sessions: BotSessionDto[] = []
 
   async onModuleInit() {
-    const botDocs = JSON.parse(await readFile(join(process.cwd(), 'bots.json'), 'utf8'))
-    this.sessions = botDocs.map((doc) => this.mapToSessionDto(doc))
+    if (isEnableWhatsAppBot) {
+      const botDocs = JSON.parse(await readFile(join(process.cwd(), 'bots.json'), 'utf8'))
+      this.sessions = botDocs.map((doc) => this.mapToSessionDto(doc))
 
-    connectToWhatsApp()
+      connectToWhatsApp()
+    }
   }
 
   async createBot(data: CreateNewBotDto, token: string) {
@@ -101,7 +122,6 @@ export class BotService implements OnModuleInit {
       if (!is_valid_token) {
         throw new UnauthorizedException('Invalid Token')
       }
-      console.log(`Create Bot ${data.name}`)
 
       const api_key = generateApiKey({
         method: 'bytes',
@@ -146,6 +166,10 @@ export class BotService implements OnModuleInit {
   async sendMessage(data: SendMessageDto, token: string) {
     try {
       const is_valid_token = validateToken(token)
+
+      if (!isEnableWhatsAppBot) {
+        throw new InternalServerError('Bot Not Enabled!')
+      }
 
       if (!is_valid_token) {
         throw new UnauthorizedException('Invalid Token')

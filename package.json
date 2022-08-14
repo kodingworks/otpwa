@@ -26,7 +26,8 @@
     "deploy:docker": "docker-compose up -d"
   },
   "dependencies": {
-    "@adiwajshing/baileys": "^4.1.0",
+    "@adiwajshing/baileys": "^4.3.0",
+    "@aws-sdk/client-ses": "^3.142.0",
     "@hapi/boom": "^9.1.4",
     "@nestjs/common": "^8.0.0",
     "@nestjs/core": "^8.0.0",
@@ -34,6 +35,7 @@
     "@nestjs/platform-express": "^8.4.5",
     "@nestjs/schedule": "^2.0.1",
     "@sentry/node": "^6.19.3",
+    "aws-sdk": "2.830.0",
     "cache-manager": "^4.1.0",
     "cache-manager-redis-store": "^2.0.0",
     "colors": "^1.4.0",
@@ -46,12 +48,14 @@
     "joi": "^17",
     "nest-raven": "^8.0.0",
     "nestjs-joi": "^1.7.0",
+    "nodemailer": "^6.7.7",
     "qrcode": "^1.5.0",
     "qrcode-terminal": "^0.12.0",
     "redis": "^4.2.0",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
     "rxjs": "^7.2.0",
+    "telegraf": "4.3.0",
     "uuid": "^8.3.2"
   },
   "devDependencies": {
@@ -65,6 +69,7 @@
     "@types/fs-extra": "^9.0.13",
     "@types/jest": "27.4.1",
     "@types/node": "^16.0.0",
+    "@types/nodemailer": "^6.4.5",
     "@types/qrcode": "^1.4.2",
     "@types/supertest": "^2.0.11",
     "@typescript-eslint/eslint-plugin": "^5.0.0",
