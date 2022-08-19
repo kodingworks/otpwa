@@ -19,6 +19,7 @@ import { Bot } from './bot.model'
 const generateApiKey = require('generate-api-key')
 const monitoringGroupChatId = process.env.MONITORING_GROUP_CHAT_ID
 const baseURL = process.env.BASE_URL
+const isLocalEnv = process.env.ENV === 'local'
 
 let sock
 let status = BotStatusEnum.OFFLINE
@@ -49,8 +50,10 @@ async function connectToWhatsApp() {
     const { connection, lastDisconnect, qr } = update
 
     if (connection === 'close') {
-      const botDisconnectErrorMessage = `[${baseURL}][🔴 Down] - BOTNYA TERPUTUS CUY, BENERIN GIH! 🙂`
-      await notificationService.sendErrorReportMessageToTelegram(monitoringGroupChatId, botDisconnectErrorMessage)
+      if (!isLocalEnv) {
+        const botDisconnectErrorMessage = `[${baseURL}][🔴 Down] - BOTNYA TERPUTUS CUY, BENERIN GIH! 🙂`
+        await notificationService.sendErrorReportMessageToTelegram(monitoringGroupChatId, botDisconnectErrorMessage)
+      }
 
       status = BotStatusEnum.OFFLINE
       const shouldReconnect = (lastDisconnect.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut
@@ -61,16 +64,20 @@ async function connectToWhatsApp() {
         connectToWhatsApp()
       }
     } else if (connection === 'open') {
-      const botDisconnectErrorMessage = `[${baseURL}][✅ Up] - Nah mantab, botnya udah terhubung! 🥶`
-      await notificationService.sendErrorReportMessageToTelegram(monitoringGroupChatId, botDisconnectErrorMessage)
+      if (!isLocalEnv) {
+        const botDisconnectErrorMessage = `[${baseURL}][✅ Up] - Nah mantab, botnya udah terhubung! 🥶`
+        await notificationService.sendErrorReportMessageToTelegram(monitoringGroupChatId, botDisconnectErrorMessage)
 
-      status = BotStatusEnum.ONLINE
-      console.log(colors.green(figlet.textSync('Bot Connected', { horizontalLayout: 'full' })))
+        status = BotStatusEnum.ONLINE
+        console.log(colors.green(figlet.textSync('Bot Connected', { horizontalLayout: 'full' })))
+      }
     }
 
     if (qr) {
-      const botDisconnectErrorMessage = `[${baseURL}][🔴 Down] - BOTNYA TERPUTUS CUY, PERLU SCAN QR, BENERIN GIH! 🙂`
-      await notificationService.sendErrorReportMessageToTelegram(monitoringGroupChatId, botDisconnectErrorMessage)
+      if (!isLocalEnv) {
+        const botDisconnectErrorMessage = `[${baseURL}][🔴 Down] - BOTNYA TERPUTUS CUY, PERLU SCAN QR, BENERIN GIH! 🙂`
+        await notificationService.sendErrorReportMessageToTelegram(monitoringGroupChatId, botDisconnectErrorMessage)
+      }
 
       // if the 'qr' property is available on 'conn'
       console.info('QR Generated')

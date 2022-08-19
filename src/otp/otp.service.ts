@@ -66,6 +66,7 @@ export class OtpService {
       const hashed_target = hash(data.recipient)
       const hashed_target_string = hashed_target.toString()
       const hashed_code = hash(`${code}`)
+
       const expires_at = new Date(Math.floor(Date.now()) + expires_in * 1000).toISOString()
 
       const target_type = data?.target_type || process.env.DEFAULT_OTP_TARGET_TYPE
@@ -149,7 +150,6 @@ export class OtpService {
 
     try {
       const saved: OtpDto = (await this.cacheManager.get(hashed_target_string)) as OtpDto
-      console.log('saved: ', saved)
 
       /**
        * This input doesn't even match an entry in the database. Maybe:
@@ -159,6 +159,15 @@ export class OtpService {
        * - wrong target or target type
        */
       if (!saved) {
+        throw new HttpException(
+          new BadRequestError('Invalid OTP.', {
+            errorCode: ErrorCodeEnum.ERROR_OTP_INVALID
+          }),
+          HttpStatus.BAD_REQUEST
+        )
+      }
+
+      if (saved.code !== hashed_code) {
         throw new HttpException(
           new BadRequestError('Invalid OTP.', {
             errorCode: ErrorCodeEnum.ERROR_OTP_INVALID
