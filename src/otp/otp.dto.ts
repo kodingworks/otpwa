@@ -1,9 +1,20 @@
 import * as Joi from 'joi'
 import { JoiSchema } from 'nestjs-joi'
 
+export enum OTPTargetType {
+  EMAIL = 'EMAIL',
+  PHONE = 'PHONE'
+}
+
 export class CreateOtpDto {
-  @JoiSchema(Joi.string().required())
-  phone: string
+  @JoiSchema(Joi.string().optional().allow(null, OTPTargetType.EMAIL, OTPTargetType.PHONE))
+  target_type?: string
+
+  @JoiSchema(Joi.string().optional().allow(null))
+  phone?: string
+
+  @JoiSchema(Joi.string().optional().allow(null))
+  recipient?: string
 
   @JoiSchema(Joi.string().optional())
   content?: string
@@ -16,8 +27,11 @@ export class CreateOtpDto {
 }
 
 export class VerifyOtpDto {
-  @JoiSchema(Joi.string().required())
-  phone: string
+  @JoiSchema(Joi.string().optional().allow(null))
+  phone?: string
+
+  @JoiSchema(Joi.string().optional().allow(null))
+  recipient?: string
 
   @JoiSchema(Joi.string().required())
   code: string
