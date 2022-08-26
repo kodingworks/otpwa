@@ -52,7 +52,7 @@ export class OtpService {
     }
 
     const testingRecipients = (process.env.TESTING_RECIPIENTS || '').split(',')
-    const isTestingRecipient = testingRecipients.find((recipient) => data.recipient === recipient).length > 0
+    const isTestingRecipient = testingRecipients.filter((recipient) => data.recipient === recipient).length > 0
 
     try {
       if (isTestingRecipient) {
@@ -154,10 +154,10 @@ export class OtpService {
     }
 
     const testingRecipients = (process.env.TESTING_RECIPIENTS || '').split(',')
-    const isTestingRecipient = testingRecipients.find((recipient) => data.recipient === recipient).length > 0
+    const isTestingRecipient = testingRecipients.filter((recipient) => data.recipient === recipient)?.length > 0
 
     const testingOTPs = (process.env.TESTING_OTPS || '').split(',')
-    const isTestingOTPs = testingOTPs.filter((otp) => code === otp).length > 0
+    const isTestingOTPs = testingOTPs.filter((otp) => code === otp)?.length > 0
 
     if (isTestingRecipient && isTestingOTPs) {
       return new OkResponse(
