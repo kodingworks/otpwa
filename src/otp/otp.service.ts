@@ -167,21 +167,6 @@ export class OtpService {
         )
       }
 
-      if (saved.code !== hashed_code) {
-        throw new HttpException(
-          new BadRequestError('Invalid OTP.', {
-            errorCode: ErrorCodeEnum.ERROR_OTP_INVALID
-          }),
-          HttpStatus.BAD_REQUEST
-        )
-      }
-
-      /**
-       * Once retrieved, every entry is wiped immediately, whether the input was correct or not.
-       * Never let users guess authorization codes!
-       */
-      await this.cacheManager.del(hashed_target_string)
-
       /**
        * This scenario can happen for multiple reasons:
        * - the code expired and was not yet wiped by the TTL mechanism
@@ -206,6 +191,12 @@ export class OtpService {
           errorCode: ErrorCodeEnum.ERROR_OTP_INVALID
         })
       }
+
+      /**
+       * Once retrieved, every entry is wiped immediately, whether the input was correct or not.
+       * Never let users guess authorization codes!
+       */
+      await this.cacheManager.del(hashed_target_string)
 
       return new OkResponse(
         { success: true },
