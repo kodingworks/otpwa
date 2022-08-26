@@ -45,12 +45,25 @@ export class OtpService {
     const code = generateRandomCode(100_000, Number(otpDigits))
     const text = content.replace(/\%code\%/g, code)
     const created_at = getNowString()
+    const target_type = data?.target_type || process.env.DEFAULT_OTP_TARGET_TYPE
 
     if (data?.phone?.length) {
       data.recipient = data?.phone
     }
 
+    const testingRecipients = (process.env.TESTING_RECIPIENTS || '').split(',')
+    const isTestingRecipient = testingRecipients.filter((recipient) => data.recipient === recipient).length > 0
+
     try {
+      if (isTestingRecipient) {
+        return new OkResponse(
+          { success: true },
+          {
+            message: `OTP has been successfully created & sent to the recipient ${target_type?.toLowerCase()}`
+          }
+        )
+      }
+
       /**
        * To prevent security issues, we don't need to store any personal data
        * or the actual auth code that was generated. We only need to make sure
@@ -69,7 +82,6 @@ export class OtpService {
 
       const expires_at = new Date(Math.floor(Date.now()) + expires_in * 1000).toISOString()
 
-      const target_type = data?.target_type || process.env.DEFAULT_OTP_TARGET_TYPE
       const SK = `target#${target_type}#${hashed_target}`
 
       await this.cacheManager.set(hashed_target_string, {
@@ -112,7 +124,7 @@ export class OtpService {
       return new OkResponse(
         { success: true },
         {
-          message: 'OTP has been successfully created & sent to the recipient phone'
+          message: `OTP has been successfully created & sent to the recipient ${target_type.toLowerCase()}`
         }
       )
     } catch (error) {
@@ -140,6 +152,22 @@ export class OtpService {
     if (!isValidToken) {
       throw new UnauthorizedException('Invalid Token')
     }
+
+    const testingRecipients = (process.env.TESTING_RECIPIENTS || '').split(',')
+    const isTestingRecipient = testingRecipients.filter((recipient) => data.recipient === recipient)?.length > 0
+
+    const testingOTPs = (process.env.TESTING_OTPS || '').split(',')
+    const isTestingOTPs = testingOTPs.filter((otp) => code === otp)?.length > 0
+
+    if (isTestingRecipient && isTestingOTPs) {
+      return new OkResponse(
+        { success: true },
+        {
+          message: 'OTP Valid.'
+        }
+      )
+    }
+
     /**
      * Only the hashed data is ever compared. We don't care about the original data
      * and did not even save it in the database for security reasons.
