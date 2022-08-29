@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@adiwajshing/baileys@^4.3.0":
-  version "4.3.0"
-  resolved "https://registry.yarnpkg.com/@adiwajshing/baileys/-/baileys-4.3.0.tgz#64a3f1385fb6da948f936740463d500df55fc0f5"
-  integrity sha512-t8W6pzpt884ZXEZvuRANiD93k8YOH8ikTlIM0MhzRJMcsBEL9+4w1Q8gWZraymOXH/YRtdJ1icWw77Y38QPC9g==
+"@adiwajshing/baileys@^4.4.0":
+  version "4.4.0"
+  resolved "https://registry.yarnpkg.com/@adiwajshing/baileys/-/baileys-4.4.0.tgz#6c39c74a29324d22aec67ddbfda890a8e5d85e37"
+  integrity sha512-5gEnkJBgraLL0USzndxto8ofYhWyMFZVkpZ4rD1nPqrjBjGMt+k+YDpllpFpOfA0yxWZb6nPrr04ikQv++dz2Q==
   dependencies:
     "@hapi/boom" "^9.1.3"
     axios "^0.24.0"
@@ -1874,10 +1874,15 @@
   resolved "https://registry.yarnpkg.com/@types/mime/-/mime-3.0.1.tgz#5f8f2bca0a5863cb69bc0b0acd88c96cb1d4ae10"
   integrity sha512-Y4XFY5VJAuw0FgAqPNd6NNoV44jbq9Bz2L7Rh/J6jLTiHBSBJa9fxqQIvkIld4GsoDOcCbvzOUAbLPsSKKg+uA==
 
-"@types/node@*", "@types/node@>=13.7.0":
+"@types/node@*":
   version "18.7.3"
   resolved "https://registry.yarnpkg.com/@types/node/-/node-18.7.3.tgz#432c89796eab539b7a30b7b8801a727b585238a4"
   integrity sha512-LJgzOEwWuMTBxHzgBR/fhhBOWrvBjvO+zPteUgbbuQi80rYIZHrk1mNbRUqPZqSLP2H7Rwt1EFLL/tNLD1Xx/w==
+
+"@types/node@>=13.7.0":
+  version "18.7.13"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-18.7.13.tgz#23e6c5168333480d454243378b69e861ab5c011a"
+  integrity sha512-46yIhxSe5xEaJZXWdIBP7GU4HDTG8/eo0qd9atdiL+lFpA03y8KS+lkTN834TWJj5767GbWv4n/P6efyTFt1Dw==
 
 "@types/node@^10.1.0":
   version "10.17.60"
@@ -3569,9 +3574,9 @@ fast-levenshtein@^2.0.6, fast-levenshtein@~2.0.6:
   integrity sha512-DCXu6Ifhqcks7TZKY3Hxp3y6qphY5SJZmrWMDrKcERSOXWQdMhU9Ig/PYrzyw/ul9jOIyh0N4M0tbC5hodg8dw==
 
 fast-redact@^3.0.0:
-  version "3.1.1"
-  resolved "https://registry.yarnpkg.com/fast-redact/-/fast-redact-3.1.1.tgz#790fcff8f808c2e12fabbfb2be5cb2deda448fa0"
-  integrity sha512-odVmjC8x8jNeMZ3C+rPMESzXVSEU8tSWSHv9HFxP2mm89G/1WwqhrerJDQm9Zus8X6aoRgQDThKqptdNA6bt+A==
+  version "3.1.2"
+  resolved "https://registry.yarnpkg.com/fast-redact/-/fast-redact-3.1.2.tgz#d58e69e9084ce9fa4c1a6fa98a3e1ecf5d7839aa"
+  integrity sha512-+0em+Iya9fKGfEQGcd62Yv6onjBmmhV1uh86XVfOU8VwAe6kaFdQCWI9s0/Nnugx5Vd9tdbZ7e6gE2tR9dzXdw==
 
 fast-safe-stringify@2.1.1, fast-safe-stringify@^2.1.1:
   version "2.1.1"

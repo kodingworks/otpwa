@@ -18,6 +18,7 @@ import { Bot } from './bot.model'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const generateApiKey = require('generate-api-key')
 const monitoringGroupChatId = process.env.MONITORING_GROUP_CHAT_ID
+const grouIdWelcomeMessage = process.env.GROUP_ID_WELCOME_MESSAGE
 const baseURL = process.env.BASE_URL
 const isLocalEnv = process.env.ENV === 'local'
 
@@ -100,8 +101,15 @@ async function connectToWhatsApp() {
 
   sock.ev.on('messages.upsert', async (m) => {
     console.log(JSON.stringify(m, undefined, 2))
-
-    console.log('replying to', m.messages[0].key.remoteJid)
+    const message = JSON.parse(JSON.stringify(m.messages[0], undefined, 2))
+    // Auto chat ketika masuk ke grup dan menunjukkan chat_id dari grup tsb
+    if (message?.messageStubType === 'GROUP_CREATE') {
+      const text = grouIdWelcomeMessage.replace('%chat_id%', message?.key?.remoteJid)
+      sock.sendMessage(message?.key?.remoteJid, {
+        text
+      })
+    }
+    console.log('replying to tes', m.messages[0].key.remoteJid)
   })
 
   sock.ev.on('creds.update', saveState)
@@ -182,7 +190,10 @@ export class BotService implements OnModuleInit {
         throw new UnauthorizedException('Invalid Token')
       }
 
-      const chat_id = data.phone?.includes('@') ? data.phone : `${data.phone}@s.whatsapp.net`
+      let chat_id = data.id?.includes('@') ? data.id : `${data.id}@s.whatsapp.net`
+      if (data.isGroup) {
+        chat_id = data.id?.includes('@') ? data.id : `${data.id}@g.us`
+      }
       return await sock.sendMessage(chat_id, {
         text: data.message
       })

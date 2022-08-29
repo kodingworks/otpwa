@@ -21,8 +21,11 @@ export interface BotSessionDto {
 
 export class SendMessageDto {
   @JoiSchema(Joi.string().required())
-  phone: string
+  id: string
 
   @JoiSchema(Joi.string().optional())
   message: string
+
+  @JoiSchema(Joi.boolean().optional())
+  isGroup?: boolean
 }
