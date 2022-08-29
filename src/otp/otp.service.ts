@@ -109,7 +109,7 @@ export class OtpService {
           .sendMessage(
             {
               message: text,
-              phone: data?.recipient
+              id: data?.recipient
             },
             token
           )

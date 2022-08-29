@@ -26,7 +26,7 @@
     "deploy:docker": "docker-compose up -d"
   },
   "dependencies": {
-    "@adiwajshing/baileys": "^4.3.0",
+    "@adiwajshing/baileys": "^4.4.0",
     "@aws-sdk/client-ses": "^3.142.0",
     "@hapi/boom": "^9.1.4",
     "@nestjs/common": "^8.0.0",
