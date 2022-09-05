@@ -194,6 +194,15 @@ export class BotService implements OnModuleInit {
       if (data.isGroup) {
         chat_id = data.id?.includes('@') ? data.id : `${data.id}@g.us`
       }
+      if (!chat_id.includes('@g.us')) {
+        if (chat_id?.charAt(0) === '+') {
+          chat_id = chat_id.replace('+', '')
+        }
+        if (chat_id?.charAt(0) === '0') {
+          chat_id = chat_id.replace('0', '62')
+        }
+      }
+
       return await sock.sendMessage(chat_id, {
         text: data.message
       })
