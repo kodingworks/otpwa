@@ -1,5 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require('dotenv').config()
+import { ClassSerializerInterceptor } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
 import { NestExpressApplication } from '@nestjs/platform-express'
 import helmet from 'helmet'
@@ -30,4 +31,5 @@ async function bootstrap() {
     console.log(`Listening on port ${PORT}...`)
   })
 }
+
 bootstrap()
