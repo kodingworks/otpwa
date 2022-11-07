@@ -68,6 +68,7 @@ export class WebhookService {
       data: data.ev
     })
     const sendWebhookResponse = lastValueFrom(this.httpService.post(this.webhookURL, webhookData))
+
     console.log('Connection Update Webhook Data Response : ', sendWebhookResponse)
 
     return data.ev
@@ -78,11 +79,14 @@ export class WebhookService {
   //-------------------------------------------------
   @OnEvent('creds.update')
   credsUpdate(data: { ev: Partial<AuthenticationCreds>; sock }) {
+    console.log('Creds Update :\n', JSON.stringify(data?.ev, undefined, 2))
+
     const webhookData = new OkResponse({
       event_type: 'creds.update',
       data: data.ev
     })
     const sendWebhookResponse = lastValueFrom(this.httpService.post(this.webhookURL, webhookData))
+
     console.log('Creds Update Webhook Data Response : ', sendWebhookResponse)
 
     return data.ev
@@ -93,11 +97,14 @@ export class WebhookService {
   //-------------------------------------------------
   @OnEvent('chats.upsert')
   chatsUpsert(data: { ev: Chat[]; sock }) {
+    console.log('Chats Upsert :\n', JSON.stringify(data?.ev, undefined, 2))
+
     const webhookData = new OkResponse({
       event_type: 'chats.upsert',
       data: data?.ev
     })
     const sendWebhookResponse = lastValueFrom(this.httpService.post(this.webhookURL, webhookData))
+
     console.log('Chats Upsert Webhook Data Response : ', sendWebhookResponse)
 
     return data.ev
@@ -105,11 +112,14 @@ export class WebhookService {
 
   @OnEvent('chats.update')
   chatsUpdate(data: { ev: Partial<Chat>[]; sock }) {
+    console.log('Chats Update :\n', JSON.stringify(data?.ev, undefined, 2))
+
     const webhookData = new OkResponse({
       event_type: 'chats.update',
       data: data.ev
     })
     const sendWebhookResponse = lastValueFrom(this.httpService.post(this.webhookURL, webhookData))
+
     console.log('Chats Update Webhook Data Response : ', sendWebhookResponse)
 
     return data.ev
@@ -117,11 +127,14 @@ export class WebhookService {
 
   @OnEvent('chats.delete')
   chatsDelete(data: { ev: string[]; sock }) {
+    console.log('Chats Delete :\n', JSON.stringify(data?.ev, undefined, 2))
+
     const webhookData = new OkResponse({
       event_type: 'chats.delete',
       data: data.ev
     })
     const sendWebhookResponse = lastValueFrom(this.httpService.post(this.webhookURL, webhookData))
+
     console.log('Chats Delete Webhook Data Response : ', sendWebhookResponse)
 
     return data.ev
@@ -132,11 +145,14 @@ export class WebhookService {
   //-------------------------------------------------
   @OnEvent('contacts.upsert')
   contactsUpsert(data: { ev: Contact[]; sock }) {
+    console.log('Contacts Upsert :\n', JSON.stringify(data?.ev, undefined, 2))
+
     const webhookData = new OkResponse({
       event_type: 'contacts.upsert',
       data: data.ev
     })
     const sendWebhookResponse = lastValueFrom(this.httpService.post(this.webhookURL, webhookData))
+
     console.log('Contact Upsert Webhook Data Response : ', sendWebhookResponse)
 
     return data.ev
@@ -144,11 +160,14 @@ export class WebhookService {
 
   @OnEvent('contacts.update')
   contactsUpdate(data: { ev: Partial<Contact>[]; sock }) {
+    console.log('Contacts Update :\n', JSON.stringify(data?.ev, undefined, 2))
+
     const webhookData = new OkResponse({
       event_type: 'contacts.update',
       data: data.ev
     })
     const sendWebhookResponse = lastValueFrom(this.httpService.post(this.webhookURL, webhookData))
+
     console.log('Contacts Update Webhook Data Response : ', sendWebhookResponse)
 
     return data.ev
@@ -159,11 +178,14 @@ export class WebhookService {
   //-------------------------------------------------
   @OnEvent('presence.update')
   presenceUpdate(data: { ev: { id: string; precenses: { [participat: string]: PresenceData } }; sock }) {
+    console.log('Presence Update :\n', JSON.stringify(data?.ev, undefined, 2))
+
     const webhookData = new OkResponse({
       event_type: 'presence.update',
       data: data.ev
     })
     const sendWebhookResponse = lastValueFrom(this.httpService.post(this.webhookURL, webhookData))
+
     console.log('Presence Update Webhook Data Response : ', sendWebhookResponse)
 
     return data.ev
@@ -172,43 +194,11 @@ export class WebhookService {
   //-------------------------------------------------
   // Message
   //-------------------------------------------------
-  @OnEvent('message.delete')
-  messageDelete(data: {
-    ev:
-      | {
-          keys: WAMessageKey[]
-        }
-      | { jid: string; all: true }
-    sock
-  }) {
-    const webhookData = new OkResponse({
-      event_type: 'message.delete',
-      data: data.ev
-    })
-    const sendWebhookResponse = lastValueFrom(this.httpService.post(this.webhookURL, webhookData))
-    console.log('Message Delete Webhook Data Response : ', sendWebhookResponse)
-
-    return data.ev
-  }
-
-  @OnEvent('message.update')
-  messageUpdate(data: { ev: WAMessageUpdate[]; sock }) {
-    const webhookData = new OkResponse({
-      event_type: 'message.update',
-      data: data.ev
-    })
-    const sendWebhookResponse = lastValueFrom(this.httpService.post(this.webhookURL, webhookData))
-    console.log('Message Update Webhook Data Response : ', sendWebhookResponse)
-
-    return data.ev
-  }
-
   @OnEvent('message.upsert')
   messageUpsert(data: { ev: { messages: WAMessage[]; type: MessageUpsertType }; sock }) {
-    console.log(JSON.stringify(data?.ev, undefined, 2))
-    const message = JSON.parse(JSON.stringify(data?.ev?.messages[0], undefined, 2))
+    console.log('Message Upsert :\n', JSON.stringify(data?.ev, undefined, 2))
 
-    console.log('am I receiving something?')
+    const message = JSON.parse(JSON.stringify(data?.ev?.messages[0], undefined, 2))
     // Auto kirim notif ketika masuk ke group dan menunjukkan chat_id dari group tsb
     if (message?.messageStubType === 'GROUP_CREATE') {
       const text = groupIdWelcomeMessage.replace('%chat_id%', message?.key?.remoteJid)
@@ -228,47 +218,97 @@ export class WebhookService {
     console.log('Message Upsert Webhook Data Response : ', sendWebhookResponse)
   }
 
+  @OnEvent('message.update')
+  messageUpdate(data: { ev: WAMessageUpdate[]; sock }) {
+    console.log('Message Update :\n', JSON.stringify(data?.ev, undefined, 2))
+
+    const webhookData = new OkResponse({
+      event_type: 'message.update',
+      data: data.ev
+    })
+    const sendWebhookResponse = lastValueFrom(this.httpService.post(this.webhookURL, webhookData))
+    console.log('Message Update Webhook Data Response : ', sendWebhookResponse)
+
+    return data.ev
+  }
+
+  @OnEvent('message.delete')
+  messageDelete(data: {
+    ev:
+      | {
+          keys: WAMessageKey[]
+        }
+      | { jid: string; all: true }
+    sock
+  }) {
+    console.log('Message Delete :\n', JSON.stringify(data?.ev, undefined, 2))
+
+    const webhookData = new OkResponse({
+      event_type: 'message.delete',
+      data: data.ev
+    })
+    const sendWebhookResponse = lastValueFrom(this.httpService.post(this.webhookURL, webhookData))
+    console.log('Message Delete Webhook Data Response : ', sendWebhookResponse)
+
+    return data.ev
+  }
+
   @OnEvent('message.reaction')
   messageReaction(data: { ev: { messages: WAMessageKey[]; type: proto.IReaction }; sock }) {
-    console.log(JSON.stringify(data?.ev, undefined, 2))
+    console.log('Message Reaction :\n', JSON.stringify(data?.ev, undefined, 2))
+
     const webhookData = new OkResponse({
       event_type: 'message.reaction',
       data: data.ev
     })
     const sendWebhookResponse = lastValueFrom(this.httpService.post(this.webhookURL, webhookData))
+
     console.log('Message Reaction Webhook Data Response : ', sendWebhookResponse)
+
+    return data.ev
   }
 
   @OnEvent('message-media.update')
   messageMediaUpdate(data: { ev: { key: WAMessageKey; media?: { ciphertext: Uint8Array; iv: Uint8Array }; error?: Boom }[]; sock }) {
-    console.log(JSON.stringify(data?.ev, undefined, 2))
+    console.log('Message-Media Update :\n', JSON.stringify(data?.ev, undefined, 2))
+
     const webhookData = new OkResponse({
       event_type: 'message-media.update',
       data: data.ev
     })
     const sendWebhookResponse = lastValueFrom(this.httpService.post(this.webhookURL, webhookData))
+
     console.log('Message-Media Update Webhook Data Response : ', sendWebhookResponse)
+
+    return data.ev
   }
 
   @OnEvent('message-receipt.update')
   messageReceiptUpdate(data: { ev: MessageUserReceiptUpdate[]; sock }) {
-    console.log(JSON.stringify(data?.ev, undefined, 2))
+    console.log('Message-Receipt Update :\n', JSON.stringify(data?.ev, undefined, 2))
+
     const webhookData = new OkResponse({
       event_type: 'message-receipt.update',
       data: data.ev
     })
     const sendWebhookResponse = lastValueFrom(this.httpService.post(this.webhookURL, webhookData))
+
     console.log('Message-Receipt Update Webhook Data Response : ', sendWebhookResponse)
+
+    return data.ev
   }
 
   @OnEvent('messaging-history.set')
   messagingHistorySet(data: { ev: { chats: Chat[]; contacts: Contact[]; messages: WAMessage[]; isLatest: boolean }; sock }) {
+    console.log('Messaging-History Set :\n', JSON.stringify(data?.ev, undefined, 2))
+
     const webhookData = new OkResponse({
       event_type: 'messaging-history.set',
       data: data.ev
     })
     const sendWebhookResponse = lastValueFrom(this.httpService.post(this.webhookURL, webhookData))
-    console.log('Messaging-History Webhook Data Response : ', sendWebhookResponse)
+
+    console.log('Messaging-History Set Webhook Data Response : ', sendWebhookResponse)
 
     return data.ev
   }
@@ -278,11 +318,14 @@ export class WebhookService {
   //-------------------------------------------------
   @OnEvent('groups.upsert')
   groupsUpsert(data: { ev: GroupMetadata[]; sock }) {
+    console.log('Groups Upsert :\n', JSON.stringify(data?.ev, undefined, 2))
+
     const webhookData = new OkResponse({
       event_type: 'groups.upsert',
       data: data.ev
     })
     const sendWebhookResponse = lastValueFrom(this.httpService.post(this.webhookURL, webhookData))
+
     console.log('Groups Upsert Webhook Data Response : ', sendWebhookResponse)
 
     return data.ev
@@ -290,11 +333,14 @@ export class WebhookService {
 
   @OnEvent('groups.update')
   groupsUpdate(data: { ev: Partial<GroupMetadata>[]; sock }) {
+    console.log('Groups Update :\n', JSON.stringify(data?.ev, undefined, 2))
+
     const webhookData = new OkResponse({
       event_type: 'groups.update',
       data: data.ev
     })
     const sendWebhookResponse = lastValueFrom(this.httpService.post(this.webhookURL, webhookData))
+
     console.log('Groups Update Webhook Data Response : ', sendWebhookResponse)
 
     return data.ev
@@ -302,11 +348,14 @@ export class WebhookService {
 
   @OnEvent('groups-participant.update')
   groupsParticipantUpdate(data: { ev: { id: string[]; type: 'add' | 'remove' }; sock }) {
+    console.log('Groups-Participant Update :\n', JSON.stringify(data?.ev, undefined, 2))
+
     const webhookData = new OkResponse({
       event_type: 'groups-participant.update',
       data: data.ev
     })
     const sendWebhookResponse = lastValueFrom(this.httpService.post(this.webhookURL, webhookData))
+
     console.log('Groups-Participant Update Webhook Data Response : ', sendWebhookResponse)
 
     return data.ev
