@@ -1,4 +1,19 @@
-import makeWASocket, { ConnectionState, DisconnectReason, MessageUpsertType, useSingleFileAuthState, WAMessage } from '@adiwajshing/baileys'
+import makeWASocket, {
+  Chat,
+  ConnectionState,
+  Contact,
+  DisconnectReason,
+  GroupMetadata,
+  MessageUpsertType,
+  MessageUserReceiptUpdate,
+  ParticipantAction,
+  PresenceData,
+  proto,
+  useSingleFileAuthState,
+  WAMessage,
+  WAMessageKey,
+  WAMessageUpdate
+} from '@adiwajshing/baileys'
 import { HttpException, Injectable, OnModuleInit, UnauthorizedException } from '@nestjs/common'
 import { EventEmitter2 } from '@nestjs/event-emitter'
 import { Request } from 'express'
@@ -97,8 +112,23 @@ async function connectToWhatsApp(eventEmitter: EventEmitter2) {
     eventEmitter.emit('connection.update', update)
   })
 
-  sock.ev.on('messages.upsert', (ev: { messages: WAMessage[]; type: MessageUpsertType }) => eventEmitter.emit('message.upsert', { ev, sock }))
   sock.ev.on('creds.update', saveState)
+  sock.ev.on('chats.upsert', (ev: Chat[]) => eventEmitter.emit('chats.upsert', { ev, sock }))
+  sock.ev.on('chats.update', (ev: Partial<Chat[]>) => eventEmitter.emit('chats.update', { ev, sock }))
+  sock.ev.on('chats.delete', (ev: string[]) => eventEmitter.emit('chats.delete', { ev, sock }))
+  sock.ev.on('presence.update', (ev: { id: string; presences: { [participant: string]: PresenceData } }) => eventEmitter.emit('presence.update', { ev, sock }))
+  sock.ev.on('contacts.upsert', (ev: Contact[]) => eventEmitter.emit('contacts.upsert', { ev, sock }))
+  sock.ev.on('contacts.update', (ev: Partial<Contact[]>) => eventEmitter.emit('contact.update', { ev, sock }))
+  sock.ev.on('messages.upsert', (ev: { messages: WAMessage[]; type: MessageUpsertType }) => eventEmitter.emit('message.upsert', { ev, sock }))
+  sock.ev.on('message.update', (ev: WAMessageUpdate[]) => eventEmitter.emit('message.update', { ev, sock }))
+  sock.ev.on('message.media-update', (ev: { key: WAMessageKey; media?: { ciphertext: Uint8Array; iv: Uint8Array }; error?: Boom }[]) =>
+    eventEmitter.emit('message.media-update', { ev, sock })
+  )
+  sock.ev.on('message.reaction', (ev: { key: WAMessageKey; reaction: proto.IReaction }[]) => eventEmitter.emit('message.reaction', { ev, sock }))
+  sock.ev.on('message-receipt.update', (ev: MessageUserReceiptUpdate[]) => eventEmitter.emit('message-receipt.update', { ev, sock }))
+  sock.ev.on('groups.upsert', (ev: GroupMetadata[]) => eventEmitter.emit('groups.upsert', { ev, sock }))
+  sock.ev.on('groups.update', (ev: Partial<GroupMetadata>[]) => eventEmitter.emit('groups.update', { ev, sock }))
+  sock.ev.on('groups-participant.update', (ev: { id: string; participants: string[]; action: ParticipantAction }) => eventEmitter.emit('groups-participant.update', { ev, sock }))
 }
 
 const isEnableWhatsAppBot = process.env.ENABLE_WHATSAPP_BOT === 'true'
