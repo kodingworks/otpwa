@@ -109,7 +109,7 @@ async function connectToWhatsApp(eventEmitter: EventEmitter2) {
       }
     }
 
-    eventEmitter.emit('connection.update', update)
+    eventEmitter.emit('connection.update', { ev: update, sock })
   })
 
   sock.ev.on('creds.update', saveState)
