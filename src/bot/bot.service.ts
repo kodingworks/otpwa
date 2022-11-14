@@ -14,23 +14,20 @@ import makeWASocket, {
   WAMessageKey,
   WAMessageUpdate
 } from '@adiwajshing/baileys'
+import { Boom } from '@hapi/boom'
 import { HttpException, Injectable, OnModuleInit, UnauthorizedException } from '@nestjs/common'
 import { EventEmitter2 } from '@nestjs/event-emitter'
+import * as colors from 'colors'
 import { Request } from 'express'
+import * as figlet from 'figlet'
 import * as fs from 'fs-extra'
-import { readFile } from 'fs/promises'
-import { join } from 'path'
-import { v4 as uuid } from 'uuid'
-import { validateToken } from '../shared/helper/token-validator'
-import { InternalServerError, NotFoundError } from '../shared/provider/error-provider'
-import { OkResponse } from '../shared/provider/response-provider'
-import { BotSessionDto, BotStatusEnum, CreateNewBotDto, SendMessageDto } from './bot.dto'
-import { Bot } from './bot.model'
 import { resolve } from 'path'
 import * as qrcode from 'qrcode'
-import * as colors from 'colors'
-import * as figlet from 'figlet'
-import { Boom } from '@hapi/boom'
+import { validateToken } from '../shared/helper/token-validator'
+import { InternalServerError } from '../shared/provider/error-provider'
+import { OkResponse } from '../shared/provider/response-provider'
+import { BotSessionDto, BotStatusEnum, SendMessageDto } from './bot.dto'
+import { Bot } from './bot.model'
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const generateApiKey = require('generate-api-key')
@@ -137,62 +134,9 @@ const isEnableWhatsAppBot = process.env.ENABLE_WHATSAPP_BOT === 'true'
 export class BotService implements OnModuleInit {
   constructor(private eventEmitter: EventEmitter2) {}
 
-  private sessions: BotSessionDto[] = []
-
   async onModuleInit() {
     if (isEnableWhatsAppBot) {
-      const botDocs = JSON.parse(await readFile(join(process.cwd(), 'bots.json'), 'utf8'))
-      this.sessions = botDocs.map((doc) => this.mapToSessionDto(doc))
-
       connectToWhatsApp(this.eventEmitter)
-    }
-  }
-
-  async createBot(data: CreateNewBotDto, token: string) {
-    try {
-      const is_valid_token = validateToken(token)
-
-      if (!is_valid_token) {
-        throw new UnauthorizedException('Invalid Token')
-      }
-
-      const api_key = generateApiKey({
-        method: 'bytes',
-        prefix: 'p.iobot_',
-        length: 20
-      })
-
-      if (!state) {
-        throw new NotFoundError(`No Bot connected.`)
-      }
-
-      const unwanted_code = state?.creds?.me?.id?.replace(/^\d+/, '')
-      const phone_number = state?.creds?.me?.id.replace(unwanted_code, '')
-      const user_id = state?.creds?.me?.id
-
-      const botToInsert = new Bot()
-
-      botToInsert.id = uuid()
-      botToInsert.name = data?.name || phone_number
-      botToInsert.api_key = api_key
-      botToInsert.phone = phone_number
-      botToInsert.user_id = user_id
-
-      this.sessions.push(botToInsert)
-
-      fs.writeJSONSync(join(process.cwd(), 'bots.json'), this.sessions)
-
-      const isTokenAlreadyExists = this.sessions.find((b) => b.api_key === api_key || b.id === user_id)
-      if (!isTokenAlreadyExists) {
-        this.sessions.push(this.mapToSessionDto(botToInsert))
-      }
-
-      return new OkResponse({
-        api_key
-      })
-    } catch (error) {
-      console.log('error : ', error)
-      throw new HttpException(error?.response || error, error?.meta?.statusCode ? error?.meta?.statusCode : 500)
     }
   }
 

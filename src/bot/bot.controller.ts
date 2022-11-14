@@ -7,11 +7,6 @@ import { BotService } from './bot.service'
 export class BotController {
   constructor(private readonly botService: BotService) {}
 
-  @Post('bot')
-  async create(@Body() data: CreateNewBotDto, @Headers('Authorization') token: string) {
-    return await this.botService.createBot(data, token)
-  }
-
   @Post('send')
   async sendMessage(@Body() data: SendMessageDto, @Headers('Authorization') token: string) {
     return await this.botService.sendMessage(data, token)
