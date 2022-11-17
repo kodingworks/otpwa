@@ -10,6 +10,8 @@ import { RedisModule } from './redis/redis.module'
 import { EventEmitterModule } from '@nestjs/event-emitter'
 import { BullModule } from '@nestjs/bull'
 import { ConfigModule } from './config/config.module'
+import { ConfigModule as EnvirontmentModule } from '@nestjs/config'
+import environtment from './shared/environtment/environtment'
 
 const isRedisVariabelExists = process?.env?.REDIS_PORT && process?.env?.REDIS_HOST
 const queueModule = isRedisVariabelExists
@@ -26,6 +28,10 @@ const queueModule = isRedisVariabelExists
 @Module({
   imports: [
     ...queueModule,
+    EnvirontmentModule.forRoot({
+      isGlobal: true,
+      load: [environtment]
+    }),
     EventEmitterModule.forRoot(),
     ScheduleModule.forRoot(),
     ConfigModule,

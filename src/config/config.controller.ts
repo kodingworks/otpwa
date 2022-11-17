@@ -7,14 +7,14 @@ export class ConfigController {
   constructor(private readonly configService: ConfigService) {}
 
   @Post('test')
-  async testWebhook(@Body() data) {
+  async testWebhook(@Body() data: unknown) {
     console.log('Webhook Data : ', data)
 
     return data
   }
 
   @Get('webhooks')
-  async getWebhookConfig(@Body() data: UpdateWebhookConfigDto, @Headers('Authorization') token: string) {
+  async getWebhookConfig(@Headers('Authorization') token: string) {
     return await this.configService.getWebhookConfig(token)
   }
 

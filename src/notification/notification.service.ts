@@ -61,6 +61,7 @@ export class NotificationService {
   }
 
   async sendErrorReportMessageToTelegram(chatId: number | string, message: string, extra?: ExtraReplyMessage) {
+    console.log('Chat ID : ......', chatId)
     return this.telegramBot.telegram
       .sendMessage(chatId, message, extra)
       .then(() => {

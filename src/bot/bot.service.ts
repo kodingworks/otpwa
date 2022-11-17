@@ -26,13 +26,9 @@ import * as qrcode from 'qrcode'
 import { validateToken } from '../shared/helper/token-validator'
 import { InternalServerError } from '../shared/provider/error-provider'
 import { OkResponse } from '../shared/provider/response-provider'
-import { BotSessionDto, BotStatusEnum, SendMessageDto } from './bot.dto'
-import { Bot } from './bot.model'
+import { BotStatusEnum, ButtonMessageTemplateActionType, SendButtonMessageDto, SendMessageDto, SendTemplateButtonMessageDto } from './bot.dto'
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const generateApiKey = require('generate-api-key')
-
-let sock
+let sock: any
 let status = BotStatusEnum.OFFLINE
 
 const authFileJsonPath = './auth_info_multi.json'
@@ -139,7 +135,6 @@ export class BotService implements OnModuleInit {
       connectToWhatsApp(this.eventEmitter)
     }
   }
-
   async sendMessage(data: SendMessageDto, token: string) {
     try {
       const is_valid_token = validateToken(token)
@@ -152,24 +147,107 @@ export class BotService implements OnModuleInit {
         throw new UnauthorizedException('Invalid Token')
       }
 
-      let chat_id = data.id?.includes('@') ? data.id : `${data.id}@s.whatsapp.net`
-      if (data.isGroup) {
-        chat_id = data.id?.includes('@') ? data.id : `${data.id}@g.us`
-      }
-      if (!chat_id.includes('@g.us')) {
-        if (chat_id?.charAt(0) === '+') {
-          chat_id = chat_id.replace('+', '')
-        }
-        if (chat_id?.charAt(0) === '0') {
-          chat_id = chat_id.replace('0', '62')
-        }
-      }
-
+      const chat_id = data.phone?.includes('@') ? data.phone : `${data.phone}@s.whatsapp.net`
       return await sock.sendMessage(chat_id, {
         text: data.message
       })
     } catch (error) {
       throw new HttpException(error?.response || error, error?.response?.statusCode ? error?.response?.statusCode : 500)
+    }
+  }
+
+  async sendButtonMesage(data: SendButtonMessageDto, token: string) {
+    try {
+      const is_valid_token = validateToken(token)
+
+      if (!isEnableWhatsAppBot) {
+        throw new InternalServerError('Bot Not Enabled!')
+      }
+
+      if (!is_valid_token) {
+        throw new UnauthorizedException('Invalid Token')
+      }
+
+      const chat_id = data.phone?.includes('@') ? data.phone : `${data.phone}@s.whatsapp.net`
+
+      return await sock.sendMessage(chat_id, {
+        text: data?.text,
+        footer: data?.footer,
+        image: { url: data?.image_url },
+        caption: data?.caption,
+        headerType: data?.header_type || 1,
+        buttons: data.buttons.map((btn, idx) => {
+          return {
+            buttonId: `btn_${idx + 1}`,
+            buttonText: {
+              displayText: btn.text
+            },
+            type: btn.type
+          }
+        })
+      })
+    } catch (error) {
+      throw new HttpException(error?.response || error, error?.response?.statusCode ? error?.response?.statusCode : 500)
+    }
+  }
+
+  async sendTemplateButtonMessage(data: SendTemplateButtonMessageDto, token: string) {
+    try {
+      const is_valid_token = validateToken(token)
+
+      if (!isEnableWhatsAppBot) {
+        throw new InternalServerError('Bot Not Enabled!')
+      }
+
+      if (!is_valid_token) {
+        throw new UnauthorizedException('Invalid Token')
+      }
+
+      const chat_id = data.phone?.includes('@') ? data.phone : `${data.phone}@s.whatsapp.net`
+
+      return await sock.sendMessage(chat_id, {
+        text: data?.text,
+        footer: data?.footer,
+        image: { url: data?.image_url },
+        caption: data?.caption,
+        templateButtons: data.template_buttons.map((btn, idx) => {
+          if (btn.action_type === ButtonMessageTemplateActionType.URL) {
+            return {
+              index: idx + 1,
+              urlButton: {
+                displayText: btn.text,
+                url: btn?.url,
+                id: `btn_${idx + 1}`
+              }
+            }
+          }
+
+          if (btn.action_type === ButtonMessageTemplateActionType.CALL) {
+            return {
+              index: idx + 1,
+              callButton: {
+                displayText: btn.text,
+                phoneNumber: btn?.phone,
+                id: `btn_${idx + 1}`
+              }
+            }
+          }
+
+          return {
+            index: idx + 1,
+            quickReplyButton: {
+              displayText: btn.text,
+              id: `btn_${idx + 1}`
+            }
+          }
+        })
+      })
+    } catch (error) {
+      console.log('Error On Send Template Button Message : ', error)
+      console.log('Error On Send Template Button Message : ', { ...error })
+
+      const errorMessage = `Error on establising connection, try to re-scan QR Code.`
+      throw new HttpException(errorMessage, error?.response?.statusCode ? error?.response?.statusCode : 500)
     }
   }
 
@@ -220,15 +298,5 @@ export class BotService implements OnModuleInit {
         message
       }
     )
-  }
-
-  private mapToSessionDto(data: Bot): BotSessionDto {
-    return {
-      id: data.id,
-      name: data.name,
-      phone: data.phone,
-      api_key: data.api_key,
-      user_id: data.user_id
-    }
   }
 }

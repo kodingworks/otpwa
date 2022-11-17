@@ -1,12 +1,21 @@
 import { resolve } from 'path'
-import { UpdateWebhookConfigDto } from './config.dto'
+import { UpdateWebhookConfigDto, WebhookEventDto } from './config.dto'
 import * as fs from 'fs-extra'
 import { safelyParseJSON } from 'src/shared/helper/json-parser'
 import { validateToken } from 'src/shared/helper/token-validator'
 import { UnauthorizedException } from '@nestjs/common'
 import { OkResponse, UpdateDataResponse } from 'src/shared/provider/response-provider'
+import { eventData } from './config.data'
 
 export class ConfigService {
+  events: WebhookEventDto[]
+
+  constructor() {
+    this.events = eventData
+
+    console.log(this.events)
+  }
+
   async getWebhookConfig(token: string) {
     const is_valid_token = validateToken(token)
 
@@ -20,7 +29,8 @@ export class ConfigService {
     if (!isConfigFileExists) {
       const webhookConfigContent = {
         webhook: {
-          url: process?.env?.WEBHOOK_URL || ''
+          url: process?.env?.WEBHOOK_URL || '',
+          events: this.events
         }
       }
 
