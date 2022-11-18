@@ -1,0 +1,80 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "main" branch
+  push:
+    branches: ['main']
+  pull_request:
+    branches: ['main']
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "test"
+  test:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # services:
+    # postgres:
+    #   image: postgres:latest
+    #   env:
+    #     POSTGRES_USER: postgres
+    #     POSTGRES_PASSWORD: rahasia123
+    #     POSTGRES_DB: db_test
+    #   ports:
+    #     - 5432:5432
+    #   # Set health checks to wait until postgres has started
+    #   options: --health-cmd pg_isready
+    #     --health-interval 10s
+    #     --health-timeout 5s
+    #     --health-retries 5
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v3
+
+      - name: Set up Node.js 16.x
+        uses: actions/setup-node@v1
+        with:
+          node-version: 16.x
+
+      - name: Install dependencies
+        run: yarn
+
+      - name: Build app
+        run: yarn build
+
+      # - name: Setup database
+      #   run: |
+      #     yarn rollback:test
+      #     yarn migrate:test
+      #     yarn seed:test
+      # env:
+      #   CURRENT_ENV: 'TEST'
+      # Database Test
+      # DB_TEST_TYPE: 'pg'
+      # DB_TEST_HOST: 127.0.0.1
+      # DB_TEST_PORT: 5432
+      # DB_TEST_USER: 'postgres'
+      # DB_TEST_PASSWORD: 'rahasia123'
+      # DB_TEST_DATABASE: 'db_test'
+
+      # Runs a set of commands using the runners shell
+      # - name: Running test command
+      #   run: yarn test
+      #   env:
+      # CURRENT_ENV: 'TEST'
+      # # Database Test
+      # DB_TEST_TYPE: 'pg'
+      # DB_TEST_HOST: 127.0.0.1
+      # DB_TEST_PORT: 5432
+      # DB_TEST_USER: 'postgres'
+      # DB_TEST_PASSWORD: 'rahasia123'
+      # DB_TEST_DATABASE: 'db_test'
