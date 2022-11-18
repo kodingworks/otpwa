@@ -1,4 +1,4 @@
-export interface Environtment {
+export interface Environment {
   node_env: string
   port: number
   tz: string

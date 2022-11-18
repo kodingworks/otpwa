@@ -24,7 +24,7 @@ import { resolve } from 'path'
 import { safelyParseJSON } from '../../shared/helper/json-parser'
 import { WebhookEventDto, WebhookEventType } from '../../config/config.dto'
 import { eventData } from '../../config/config.data'
-import { ConfigService as EnvirontmentService } from '@nestjs/config'
+import { ConfigService as EnvironmentService } from '@nestjs/config'
 
 @Injectable()
 export class WebhookService implements OnModuleInit {
@@ -36,14 +36,14 @@ export class WebhookService implements OnModuleInit {
   groupIdWelcomeMessage: string
   isLocalEnv: boolean
 
-  constructor(private readonly httpService: HttpService, private environtment: EnvirontmentService) {
-    this.webhookURL = this.environtment.get<string>('webhook.default_url')
+  constructor(private readonly httpService: HttpService, private environment: EnvironmentService) {
+    this.webhookURL = this.environment.get<string>('webhook.default_url')
     this.events = eventData
 
-    this.isLocalEnv = this.environtment.get<string>('node_env') !== 'local'
-    this.baseURL = this.environtment.get<string>('app.base_url')
-    this.monitoringGroupChatId = this.environtment.get<string>('telegram.monitoring_group_chat_id')
-    this.groupIdWelcomeMessage = this.environtment.get<string | null>('telegram.group_id_welcome_message')
+    this.isLocalEnv = this.environment.get<string>('node_env') !== 'local'
+    this.baseURL = this.environment.get<string>('app.base_url')
+    this.monitoringGroupChatId = this.environment.get<string>('telegram.monitoring_group_chat_id')
+    this.groupIdWelcomeMessage = this.environment.get<string | null>('telegram.group_id_welcome_message')
   }
 
   async onModuleInit() {

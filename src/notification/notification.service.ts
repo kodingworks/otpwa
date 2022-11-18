@@ -46,7 +46,7 @@ export class NotificationService {
 
       try {
         await transporter.sendMail({
-          from: process.env.SENDER_EMAIL,
+          from: process.env.SMTP_SENDER_EMAIL,
           to: data.to,
           subject,
           html: message

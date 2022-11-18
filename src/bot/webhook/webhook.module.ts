@@ -1,10 +1,10 @@
 import { HttpModule } from '@nestjs/axios'
 import { Module } from '@nestjs/common'
 import { WebhookService } from './webhook.service'
-import { ConfigModule as EnvirontmentModule } from '@nestjs/config'
+import { ConfigModule as EnvironmentModule } from '@nestjs/config'
 
 @Module({
-  imports: [EnvirontmentModule, HttpModule],
+  imports: [EnvironmentModule, HttpModule],
   controllers: [],
   providers: [WebhookService],
   exports: [WebhookModule, WebhookService]
