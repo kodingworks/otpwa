@@ -9,19 +9,19 @@ export enum WebhookEventType {
   CHATS_UPDATE = 'chats.update',
   CHATS_DELETE = 'chats.delete',
   PRESENCE_UPDATE = 'presence.update',
-  CONTACTS_UPSERT = 'contacs.upsert',
+  CONTACTS_UPSERT = 'contacts.upsert',
   CONTACTS_UPDATE = 'contacts.update',
   MESSAGES_DELETE = 'messages.delete',
   MESSAGES_UPDATE = 'messages.update',
   MESSAGES_MEDIA_UPDATE = 'messages.media-update',
   MESSAGES_UPSERT = 'messages.upsert',
   MESSAGES_REACTION = 'messages.reaction',
-  MESSAGES_RECEIPT_UPDATE = 'messages-receipt.update',
+  MESSAGES_RECEIPT_UPDATE = 'message-receipt.update',
   GROUPS_UPSERT = 'groups.upsert',
   GROUPS_UPDATE = 'groups.update',
-  GROUPS_PARTICIPANTS_UPDATE = 'groups-participants.update',
+  GROUPS_PARTICIPANTS_UPDATE = 'group-participants.update',
   BLOCKLIST_SET = 'blocklist.set',
-  BLOCKLIST_UPSERT = 'blocklist.upsert'
+  BLOCKLIST_UPDATE = 'blocklist.update'
 }
 
 export interface WebhookEventDto {

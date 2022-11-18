@@ -25,7 +25,6 @@ import { safelyParseJSON } from '../../shared/helper/json-parser'
 import { WebhookEventDto, WebhookEventType } from '../../config/config.dto'
 import { eventData } from '../../config/config.data'
 import { ConfigService as EnvirontmentService } from '@nestjs/config'
-import { version } from 'os'
 
 @Injectable()
 export class WebhookService implements OnModuleInit {
@@ -76,10 +75,35 @@ export class WebhookService implements OnModuleInit {
     }
   }
 
+  async sendWebhookHttpRequest(event: any, eventType: WebhookEventType, eventName: string) {
+    console.log(`${eventName} :\n`, JSON.stringify(event, undefined, 2))
+    const webhookData = new OkResponse({
+      event_type: eventType,
+      data: event,
+      created_at: new Date().toISOString()
+    })
+
+    const { webhookURL, events } = this.getWebhookConfig()
+    const isWebhookURLSet = webhookURL?.length
+    const isWebhookEventEnabled = events.find((webhookEvent) => webhookEvent.type === eventType && webhookEvent.enabled)
+
+    if (!isWebhookURLSet) {
+      console.error('Webhook URL is not configured!')
+      return event
+    }
+
+    if (isWebhookEventEnabled) {
+      const sendWebhookResponse = await lastValueFrom(this.httpService.post(webhookURL, webhookData))
+      console.log(`${eventName} Webhook Data Response : `, sendWebhookResponse.data)
+    }
+
+    return webhookData
+  }
+
   //-------------------------------------------------
   // Connection
   //-------------------------------------------------
-  @OnEvent('connection.update')
+  @OnEvent(WebhookEventType.CONNECTION_UPDATE)
   async connectionUpdate(data: Required<{ ev: Required<ConnectionState>; sock: any }>) {
     const { connection, qr, lastDisconnect } = data?.ev || {}
     const notificationService = new NotificationService()
@@ -117,240 +141,61 @@ export class WebhookService implements OnModuleInit {
       }
     }
 
-    const webhookData = new OkResponse({
-      event_type: 'connection.update',
-      data: data.ev,
-      created_at: new Date().toISOString()
-    })
-
-    const { webhookURL, events } = this.getWebhookConfig()
-    const isWebhookURLSet = webhookURL?.length
-    const isWebhookEventEnabled = events.find((webhookEvent) => webhookEvent.type === WebhookEventType.CONNECTION_UPDATE && webhookEvent.enabled)
-
-    if (!isWebhookURLSet) {
-      console.error('Webhook URL is not configured!')
-      return data.ev
-    }
-
-    if (isWebhookEventEnabled) {
-      const sendWebhookResponse = await lastValueFrom(this.httpService.post(webhookURL, webhookData))
-      console.log('Connection Update Webhook Data Response : ', sendWebhookResponse.data)
-    }
-
-    return data.ev
+    return await this.sendWebhookHttpRequest(data.ev, WebhookEventType.CONNECTION_UPDATE, 'Connection Update')
   }
 
   //-------------------------------------------------
   // Creds
   //-------------------------------------------------
-  @OnEvent('creds.update')
+  @OnEvent(WebhookEventType.CREDENTIALS_UPDATE)
   async credsUpdate(data: { ev: Partial<AuthenticationCreds>; sock: any }) {
-    console.log('Creds Update :\n', JSON.stringify(data?.ev, undefined, 2))
-
-    const webhookData = new OkResponse({
-      event_type: 'creds.update',
-      data: data.ev,
-      created_at: new Date().toISOString()
-    })
-
-    const { webhookURL, events } = this.getWebhookConfig()
-    const isWebhookURLSet = webhookURL?.length
-    const isWebhookEventEnabled = events.find((webhookEvent) => webhookEvent.type === WebhookEventType.CREDENTIALS_UPDATE && webhookEvent.enabled)
-
-    if (!isWebhookURLSet) {
-      console.error('Webhook URL is not configured!')
-      return data.ev
-    }
-
-    if (isWebhookEventEnabled) {
-      const sendWebhookResponse = await lastValueFrom(this.httpService.post(webhookURL, webhookData))
-      console.log('Creds Update Webhook Data Response : ', sendWebhookResponse.data)
-    }
-
-    return data.ev
+    return await this.sendWebhookHttpRequest(data.ev, WebhookEventType.CREDENTIALS_UPDATE, 'Creds Update')
   }
 
   //-------------------------------------------------
   // Chats
   //-------------------------------------------------
-  @OnEvent('chats.upsert')
+  @OnEvent(WebhookEventType.CHATS_UPSERT)
   async chatsUpsert(data: { ev: Chat[]; sock: any }) {
-    console.log('Chats Upsert :\n', JSON.stringify(data?.ev, undefined, 2))
-
-    const webhookData = new OkResponse({
-      event_type: 'chats.upsert',
-      data: data?.ev,
-      created_at: new Date().toISOString()
-    })
-
-    const { webhookURL, events } = this.getWebhookConfig()
-    console.log('Chats Upsert Webhook URL :', webhookURL)
-    console.log('Chats Upsert Events : ', events)
-    const isWebhookURLSet = webhookURL?.length
-    const isWebhookEventEnabled = events.find((webhookEvent) => webhookEvent.type === WebhookEventType.CHATS_UPSERT && webhookEvent.enabled)
-    console.log('Chats Upsert isWebhookEventEnabled :', isWebhookEventEnabled)
-
-    if (!isWebhookURLSet) {
-      console.error('Webhook URL is not configured!')
-      return data.ev
-    }
-
-    if (isWebhookEventEnabled) {
-      const sendWebhookResponse = await lastValueFrom(this.httpService.post(webhookURL, webhookData))
-      console.log('Chats Upsert Webhook Data Response : ', sendWebhookResponse.data)
-    }
-
-    return data.ev
+    return await this.sendWebhookHttpRequest(data.ev, WebhookEventType.CHATS_UPSERT, 'Chats Upsert')
   }
 
-  @OnEvent('chats.update')
+  @OnEvent(WebhookEventType.CHATS_UPDATE)
   async chatsUpdate(data: { ev: Partial<Chat>[]; sock: any }) {
-    console.log('Chats Update :\n', JSON.stringify(data?.ev, undefined, 2))
-
-    const webhookData = new OkResponse({
-      event_type: 'chats.update',
-      data: data.ev,
-      created_at: new Date().toISOString()
-    })
-
-    const { webhookURL, events } = this.getWebhookConfig()
-    const isWebhookURLSet = webhookURL?.length
-    const isWebhookEventEnabled = events.find((webhookEvent) => webhookEvent.type === WebhookEventType.CHATS_UPDATE && webhookEvent.enabled)
-
-    if (!isWebhookURLSet) {
-      console.error('Webhook URL is not configured!')
-      return data.ev
-    }
-
-    if (isWebhookEventEnabled) {
-      const sendWebhookResponse = await lastValueFrom(this.httpService.post(webhookURL, webhookData))
-      console.log('Chats Update Webhook Data Response : ', sendWebhookResponse.data)
-    }
-
-    return data.ev
+    return await this.sendWebhookHttpRequest(data.ev, WebhookEventType.CHATS_UPDATE, 'Chats Update')
   }
 
-  @OnEvent('chats.delete')
+  @OnEvent(WebhookEventType.CHATS_DELETE)
   async chatsDelete(data: { ev: string[]; sock: any }) {
-    console.log('Chats Delete :\n', JSON.stringify(data?.ev, undefined, 2))
-
-    const webhookData = new OkResponse({
-      event_type: 'chats.delete',
-      data: data.ev,
-      created_at: new Date().toISOString()
-    })
-
-    const { webhookURL, events } = this.getWebhookConfig()
-    const isWebhookURLSet = webhookURL?.length
-    const isWebhookEventEnabled = events.find((webhookEvent) => webhookEvent.type === WebhookEventType.CHATS_DELETE && webhookEvent.enabled)
-
-    if (!isWebhookURLSet) {
-      console.error('Webhook URL is not configured!')
-      return data.ev
-    }
-
-    if (isWebhookEventEnabled) {
-      const sendWebhookResponse = await lastValueFrom(this.httpService.post(webhookURL, webhookData))
-      console.log('Chats Delete Webhook Data Response : ', sendWebhookResponse.data)
-    }
-
-    return data.ev
+    return await this.sendWebhookHttpRequest(data.ev, WebhookEventType.CHATS_DELETE, 'Chats Delete')
   }
 
   //-------------------------------------------------
   // Contacts
   //-------------------------------------------------
-  @OnEvent('contacts.upsert')
+  @OnEvent(WebhookEventType.CONTACTS_UPSERT)
   async contactsUpsert(data: { ev: Contact[]; sock: any }) {
-    console.log('Contacts Upsert :\n', JSON.stringify(data?.ev, undefined, 2))
-
-    const webhookData = new OkResponse({
-      event_type: 'contacts.upsert',
-      data: data.ev,
-      created_at: new Date().toISOString()
-    })
-
-    const { webhookURL, events } = this.getWebhookConfig()
-    const isWebhookURLSet = webhookURL?.length
-    const isWebhookEventEnabled = events.find((webhookEvent) => webhookEvent.type === WebhookEventType.CONTACTS_UPDATE && webhookEvent.enabled)
-
-    if (!isWebhookURLSet) {
-      console.error('Webhook URL is not configured!')
-      return data.ev
-    }
-
-    if (isWebhookEventEnabled) {
-      const sendWebhookResponse = await lastValueFrom(this.httpService.post(webhookURL, webhookData))
-      console.log('Contact Upsert Webhook Data Response : ', sendWebhookResponse.data)
-    }
-
-    return data.ev
+    return await this.sendWebhookHttpRequest(data.ev, WebhookEventType.CONTACTS_UPSERT, 'Contacts Upsert')
   }
 
-  @OnEvent('contacts.update')
+  @OnEvent(WebhookEventType.CONTACTS_UPDATE)
   async contactsUpdate(data: { ev: Partial<Contact>[]; sock: any }) {
-    console.log('Contacts Update :\n', JSON.stringify(data?.ev, undefined, 2))
-
-    const webhookData = new OkResponse({
-      event_type: 'contacts.update',
-      data: data.ev,
-      created_at: new Date().toISOString()
-    })
-
-    const { webhookURL, events } = this.getWebhookConfig()
-    const isWebhookURLSet = webhookURL?.length
-    const isWebhookEventEnabled = events.find((webhookEvent) => webhookEvent.type === WebhookEventType.CONTACTS_UPDATE && webhookEvent.enabled)
-
-    if (!isWebhookURLSet) {
-      console.error('Webhook URL is not configured!')
-      return data.ev
-    }
-
-    if (isWebhookEventEnabled) {
-      const sendWebhookResponse = await lastValueFrom(this.httpService.post(webhookURL, webhookData))
-      console.log('Contact Upsert Webhook Data Response : ', sendWebhookResponse.data)
-    }
-
-    return data.ev
+    return await this.sendWebhookHttpRequest(data.ev, WebhookEventType.CONTACTS_UPDATE, 'Contacts Update')
   }
 
   //-------------------------------------------------
   // Presence
   //-------------------------------------------------
-  @OnEvent('presence.update')
+  @OnEvent(WebhookEventType.PRESENCE_UPDATE)
   async presenceUpdate(data: { ev: { id: string; precenses: { [participat: string]: PresenceData } }; sock: any }) {
-    console.log('Presence Update :\n', JSON.stringify(data?.ev, undefined, 2))
-
-    const webhookData = new OkResponse({
-      event_type: 'presence.update',
-      data: data.ev,
-      created_at: new Date().toISOString()
-    })
-
-    const { webhookURL, events } = this.getWebhookConfig()
-    const isWebhookURLSet = webhookURL?.length
-    const isWebhookEventEnabled = events.find((webhookEvent) => webhookEvent.type === WebhookEventType.PRESENCE_UPDATE && webhookEvent.enabled)
-
-    if (!isWebhookURLSet) {
-      console.error('Webhook URL is not configured!')
-      return data.ev
-    }
-
-    if (isWebhookEventEnabled) {
-      const sendWebhookResponse = await lastValueFrom(this.httpService.post(webhookURL, webhookData))
-      console.log('Presence Update Webhook Data Response : ', sendWebhookResponse.data)
-    }
-
-    return data.ev
+    return await this.sendWebhookHttpRequest(data.ev, WebhookEventType.PRESENCE_UPDATE, 'Presence Delete')
   }
 
   //-------------------------------------------------
   // Message
   //-------------------------------------------------
-  @OnEvent('message.upsert')
+  @OnEvent(WebhookEventType.MESSAGES_UPSERT)
   async messageUpsert(data: { ev: { messages: WAMessage[]; type: MessageUpsertType }; sock: any }) {
-    console.log('Message Upsert :\n', JSON.stringify(data?.ev, undefined, 2))
-
     const message = JSON.parse(JSON.stringify(data?.ev?.messages[0], undefined, 2))
     // Auto kirim notif ketika masuk ke group dan menunjukkan chat_id dari group tsb
     if (message?.messageStubType === 'GROUP_CREATE') {
@@ -363,55 +208,15 @@ export class WebhookService implements OnModuleInit {
       }
     }
 
-    const webhookData = new OkResponse({
-      event_type: 'message.upsert',
-      data: data.ev,
-      created_at: new Date().toISOString()
-    })
-
-    const { webhookURL, events } = this.getWebhookConfig()
-    const isWebhookURLSet = webhookURL?.length
-    const isWebhookEventEnabled = events.find((webhookEvent) => webhookEvent.type === WebhookEventType.MESSAGES_UPSERT && webhookEvent.enabled)
-
-    if (!isWebhookURLSet) {
-      console.error('Webhook URL is not configured!')
-      return data.ev
-    }
-
-    if (isWebhookEventEnabled) {
-      const sendWebhookResponse = await lastValueFrom(this.httpService.post(webhookURL, webhookData))
-      console.log('Message Upsert Webhook Data Response : ', sendWebhookResponse.data)
-    }
+    return await this.sendWebhookHttpRequest(data.ev, WebhookEventType.MESSAGES_UPSERT, 'Message Upsert')
   }
 
-  @OnEvent('message.update')
+  @OnEvent(WebhookEventType.MESSAGES_UPDATE)
   async messageUpdate(data: { ev: WAMessageUpdate[]; sock: any }) {
-    console.log('Message Update :\n', JSON.stringify(data?.ev, undefined, 2))
-
-    const webhookData = new OkResponse({
-      event_type: 'message.update',
-      data: data.ev,
-      created_at: new Date().toISOString()
-    })
-
-    const { webhookURL, events } = this.getWebhookConfig()
-    const isWebhookURLSet = webhookURL?.length
-    const isWebhookEventEnabled = events.find((webhookEvent) => webhookEvent.type === WebhookEventType.MESSAGES_UPDATE && webhookEvent.enabled)
-
-    if (!isWebhookURLSet) {
-      console.error('Webhook URL is not configured!')
-      return data.ev
-    }
-
-    if (isWebhookEventEnabled) {
-      const sendWebhookResponse = await lastValueFrom(this.httpService.post(webhookURL, webhookData))
-      console.log('Message Update Webhook Data Response : ', sendWebhookResponse.data)
-    }
-
-    return data.ev
+    return await this.sendWebhookHttpRequest(data.ev, WebhookEventType.MESSAGES_UPDATE, 'Message Update')
   }
 
-  @OnEvent('message.delete')
+  @OnEvent(WebhookEventType.MESSAGES_DELETE)
   async messageDelete(data: {
     ev:
       | {
@@ -420,220 +225,57 @@ export class WebhookService implements OnModuleInit {
       | { jid: string; all: true }
     sock: any
   }) {
-    console.log('Message Delete :\n', JSON.stringify(data?.ev, undefined, 2))
-
-    const webhookData = new OkResponse({
-      event_type: 'message.delete',
-      data: data.ev,
-      created_at: new Date().toISOString()
-    })
-
-    const { webhookURL, events } = this.getWebhookConfig()
-    const isWebhookURLSet = webhookURL?.length
-    const isWebhookEventEnabled = events.find((webhookEvent) => webhookEvent.type === WebhookEventType.MESSAGES_DELETE && webhookEvent.enabled)
-
-    if (!isWebhookURLSet) {
-      console.error('Webhook URL is not configured!')
-      return data.ev
-    }
-
-    if (isWebhookEventEnabled) {
-      const sendWebhookResponse = await lastValueFrom(this.httpService.post(webhookURL, webhookData))
-      console.log('Message Delete Webhook Data Response : ', sendWebhookResponse.data)
-    }
-
-    return data.ev
+    return await this.sendWebhookHttpRequest(data.ev, WebhookEventType.MESSAGES_DELETE, 'Message Delete')
   }
 
-  @OnEvent('message.reaction')
+  @OnEvent(WebhookEventType.MESSAGES_REACTION)
   async messageReaction(data: { ev: { messages: WAMessageKey[]; type: proto.IReaction }; sock: any }) {
-    console.log('Message Reaction :\n', JSON.stringify(data?.ev, undefined, 2))
-
-    const webhookData = new OkResponse({
-      event_type: 'message.reaction',
-      data: data.ev,
-      created_at: new Date().toISOString()
-    })
-
-    const { webhookURL, events } = this.getWebhookConfig()
-    const isWebhookURLSet = webhookURL?.length
-    const isWebhookEventEnabled = events.find((webhookEvent) => webhookEvent.type === WebhookEventType.MESSAGES_REACTION && webhookEvent.enabled)
-
-    if (!isWebhookURLSet) {
-      console.error('Webhook URL is not configured!')
-      return data.ev
-    }
-
-    if (isWebhookEventEnabled) {
-      const sendWebhookResponse = await lastValueFrom(this.httpService.post(webhookURL, webhookData))
-      console.log('Message Reaction Webhook Data Response : ', sendWebhookResponse.data)
-    }
-
-    return data.ev
+    return await this.sendWebhookHttpRequest(data.ev, WebhookEventType.MESSAGES_REACTION, 'Message Reaction')
   }
 
-  @OnEvent('message-media.update')
+  @OnEvent(WebhookEventType.MESSAGES_RECEIPT_UPDATE)
   async messageMediaUpdate(data: { ev: { key: WAMessageKey; media?: { ciphertext: Uint8Array; iv: Uint8Array }; error?: Boom }[]; sock: any }) {
-    console.log('Message-Media Update :\n', JSON.stringify(data?.ev, undefined, 2))
-
-    const webhookData = new OkResponse({
-      event_type: 'message-media.update',
-      data: data.ev,
-      created_at: new Date().toISOString()
-    })
-
-    const { webhookURL, events } = this.getWebhookConfig()
-    const isWebhookURLSet = webhookURL?.length
-    const isWebhookEventEnabled = events.find((webhookEvent) => webhookEvent.type === WebhookEventType.MESSAGES_MEDIA_UPDATE && webhookEvent.enabled)
-
-    if (!isWebhookURLSet) {
-      console.error('Webhook URL is not configured!')
-      return data.ev
-    }
-
-    if (isWebhookEventEnabled) {
-      const sendWebhookResponse = await lastValueFrom(this.httpService.post(webhookURL, webhookData))
-      console.log('Message-Media Update Webhook Data Response : ', sendWebhookResponse.data)
-    }
-
-    return data.ev
+    return await this.sendWebhookHttpRequest(data.ev, WebhookEventType.MESSAGES_MEDIA_UPDATE, 'Message Media Update')
   }
 
-  @OnEvent('message-receipt.update')
+  @OnEvent(WebhookEventType.MESSAGES_RECEIPT_UPDATE)
   async messageReceiptUpdate(data: { ev: MessageUserReceiptUpdate[]; sock: any }) {
-    console.log('Message-Receipt Update :\n', JSON.stringify(data?.ev, undefined, 2))
-
-    const webhookData = new OkResponse({
-      event_type: 'message-receipt.update',
-      data: data.ev,
-      created_at: new Date().toISOString()
-    })
-
-    const { webhookURL, events } = this.getWebhookConfig()
-    const isWebhookURLSet = webhookURL?.length
-    const isWebhookEventEnabled = events.find((webhookEvent) => webhookEvent.type === WebhookEventType.MESSAGES_RECEIPT_UPDATE && webhookEvent.enabled)
-
-    if (!isWebhookURLSet) {
-      console.error('Webhook URL is not configured!')
-      return data.ev
-    }
-
-    if (isWebhookEventEnabled) {
-      const sendWebhookResponse = await lastValueFrom(this.httpService.post(webhookURL, webhookData))
-      console.log('Message-Receipt Update Webhook Data Response : ', sendWebhookResponse.data)
-    }
-
-    return data.ev
+    return await this.sendWebhookHttpRequest(data.ev, WebhookEventType.MESSAGES_RECEIPT_UPDATE, 'Message Receipt Update')
   }
 
-  @OnEvent('messaging-history.set')
+  @OnEvent(WebhookEventType.MESSAGING_HISTORY_SET)
   async messagingHistorySet(data: { ev: { chats: Chat[]; contacts: Contact[]; messages: WAMessage[]; isLatest: boolean }; sock: any }) {
-    console.log('Messaging-History Set :\n', JSON.stringify(data?.ev, undefined, 2))
-
-    const webhookData = new OkResponse({
-      event_type: 'messaging-history.set',
-      data: data.ev,
-      created_at: new Date().toISOString()
-    })
-
-    const { webhookURL, events } = this.getWebhookConfig()
-    const isWebhookURLSet = webhookURL?.length
-    const isWebhookEventEnabled = events.find((webhookEvent) => webhookEvent.type === WebhookEventType.MESSAGING_HISTORY_SET && webhookEvent.enabled)
-
-    if (!isWebhookURLSet) {
-      console.error('Webhook URL is not configured!')
-      return data.ev
-    }
-
-    if (isWebhookEventEnabled) {
-      const sendWebhookResponse = await lastValueFrom(this.httpService.post(webhookURL, webhookData))
-      console.log('Messaging-History Set Webhook Data Response : ', sendWebhookResponse.data)
-    }
-
-    return data.ev
+    return await this.sendWebhookHttpRequest(data.ev, WebhookEventType.MESSAGING_HISTORY_SET, 'Messaging-History Set')
   }
 
   //-------------------------------------------------
   // Groups
   //-------------------------------------------------
-  @OnEvent('groups.upsert')
+  @OnEvent(WebhookEventType.GROUPS_UPSERT)
   async groupsUpsert(data: { ev: GroupMetadata[]; sock: any }) {
-    console.log('Groups Upsert :\n', JSON.stringify(data?.ev, undefined, 2))
-
-    const webhookData = new OkResponse({
-      event_type: 'groups.upsert',
-      data: data.ev,
-      created_at: new Date().toISOString()
-    })
-
-    const { webhookURL, events } = this.getWebhookConfig()
-    const isWebhookURLSet = webhookURL?.length
-    const isWebhookEventEnabled = events.find((webhookEvent) => webhookEvent.type === WebhookEventType.GROUPS_UPSERT && webhookEvent.enabled)
-
-    if (!isWebhookURLSet) {
-      console.error('Webhook URL is not configured!')
-      return data.ev
-    }
-
-    if (isWebhookEventEnabled) {
-      const sendWebhookResponse = await lastValueFrom(this.httpService.post(webhookURL, webhookData))
-      console.log('Messaging-History Set Webhook Data Response : ', sendWebhookResponse.data)
-    }
-
-    return data.ev
+    return await this.sendWebhookHttpRequest(data.ev, WebhookEventType.GROUPS_UPSERT, 'Groups Upsert')
   }
 
-  @OnEvent('groups.update')
+  @OnEvent(WebhookEventType.GROUPS_UPDATE)
   async groupsUpdate(data: { ev: Partial<GroupMetadata>[]; sock: any }) {
-    console.log('Groups Update :\n', JSON.stringify(data?.ev, undefined, 2))
-
-    const webhookData = new OkResponse({
-      event_type: 'groups.update',
-      data: data.ev,
-      created_at: new Date().toISOString()
-    })
-
-    const { webhookURL, events } = this.getWebhookConfig()
-    const isWebhookURLSet = webhookURL?.length
-    const isWebhookEventEnabled = events.find((webhookEvent) => webhookEvent.type === WebhookEventType.GROUPS_UPDATE && webhookEvent.enabled)
-
-    if (!isWebhookURLSet) {
-      console.error('Webhook URL is not configured!')
-      return data.ev
-    }
-
-    if (isWebhookEventEnabled) {
-      const sendWebhookResponse = await lastValueFrom(this.httpService.post(webhookURL, webhookData))
-      console.log('Groups Update Webhook Data Response : ', sendWebhookResponse.data)
-    }
-
-    return data.ev
+    return await this.sendWebhookHttpRequest(data.ev, WebhookEventType.GROUPS_UPDATE, 'Groups Update')
   }
 
-  @OnEvent('groups-participant.update')
+  @OnEvent(WebhookEventType.GROUPS_PARTICIPANTS_UPDATE)
   async groupsParticipantUpdate(data: { ev: { id: string[]; type: 'add' | 'remove' }; sock: any }) {
-    console.log('Groups-Participant Update :\n', JSON.stringify(data?.ev, undefined, 2))
+    return await this.sendWebhookHttpRequest(data.ev, WebhookEventType.GROUPS_PARTICIPANTS_UPDATE, 'Groups-Participant Update')
+  }
 
-    const webhookData = new OkResponse({
-      event_type: 'groups-participant.update',
-      data: data.ev,
-      created_at: new Date().toISOString()
-    })
+  //-------------------------------------------------
+  // Blocklist
+  //-------------------------------------------------
+  @OnEvent(WebhookEventType.BLOCKLIST_SET)
+  async blocklistSet(data: { ev: GroupMetadata[]; sock: any }) {
+    return await this.sendWebhookHttpRequest(data.ev, WebhookEventType.BLOCKLIST_SET, 'Blocklist Set')
+  }
 
-    const { webhookURL, events } = this.getWebhookConfig()
-    const isWebhookURLSet = webhookURL?.length
-    const isWebhookEventEnabled = events.find((webhookEvent) => webhookEvent.type === WebhookEventType.GROUPS_PARTICIPANTS_UPDATE && webhookEvent.enabled)
-
-    if (!isWebhookURLSet) {
-      console.error('Webhook URL is not configured!')
-      return data.ev
-    }
-
-    if (isWebhookEventEnabled) {
-      const sendWebhookResponse = await lastValueFrom(this.httpService.post(webhookURL, webhookData))
-      console.log('Groups-Participant Update Webhook Data Response : ', sendWebhookResponse.data)
-    }
-
-    return data.ev
+  @OnEvent(WebhookEventType.BLOCKLIST_UPDATE)
+  async blocklistUpdate(data: { ev: Partial<GroupMetadata>[]; sock: any }) {
+    return await this.sendWebhookHttpRequest(data.ev, WebhookEventType.BLOCKLIST_UPDATE, 'Blocklist Update')
   }
 }
