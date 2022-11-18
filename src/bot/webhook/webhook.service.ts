@@ -75,7 +75,7 @@ export class WebhookService implements OnModuleInit {
     }
   }
 
-  async sendWebhookHttpRequest(event: any, eventType: WebhookEventType, eventName: string) {
+  async sendWebhookHttpRequest(event: unknown, eventType: WebhookEventType, eventName: string) {
     console.log(`${eventName} :\n`, JSON.stringify(event, undefined, 2))
     const webhookData = new OkResponse({
       event_type: eventType,
