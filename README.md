@@ -175,6 +175,8 @@ $ yarn run start
 $ yarn run start:dev
 ```
 
+Once the app is started, you can navigate to http://localhost:3000 or http://locahost:8000. The app will automatically reload if you change any of the source files on `watch mode`.
+
 ### Running it using Docker
 
 Use the [Docker Compose](https://docs.docker.com/compose/) to run this project using Docker.
@@ -186,8 +188,6 @@ $ docker-compose build --no-cache
 # Run the app
 $ docker-compose up -d
 ```
-
-Once the app is started, you can navigate to http://localhost:8000 or http://locahost:3000. The app will automatically reload if you change any of the source files.
 
 ### Build the app
 
