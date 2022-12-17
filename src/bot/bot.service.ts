@@ -1,27 +1,34 @@
-import makeWASocket, { DisconnectReason, useSingleFileAuthState } from '@adiwajshing/baileys'
+import makeWASocket, {
+  Chat,
+  ConnectionState,
+  Contact,
+  DisconnectReason,
+  GroupMetadata,
+  MessageUpsertType,
+  MessageUserReceiptUpdate,
+  ParticipantAction,
+  PresenceData,
+  proto,
+  useSingleFileAuthState,
+  WAMessage,
+  WAMessageKey,
+  WAMessageUpdate
+} from '@adiwajshing/baileys'
 import { Boom } from '@hapi/boom'
 import { HttpException, Injectable, OnModuleInit, UnauthorizedException } from '@nestjs/common'
+import { EventEmitter2 } from '@nestjs/event-emitter'
 import * as colors from 'colors'
 import { Request } from 'express'
 import * as figlet from 'figlet'
 import * as fs from 'fs-extra'
-import { readFile } from 'fs/promises'
-import { join, resolve } from 'path'
+import { resolve } from 'path'
 import * as qrcode from 'qrcode'
-import { v4 as uuid } from 'uuid'
-import { NotificationService } from '../notification/notification.service'
 import { validateToken } from '../shared/helper/token-validator'
-import { InternalServerError, NotFoundError } from '../shared/provider/error-provider'
+import { InternalServerError } from '../shared/provider/error-provider'
 import { OkResponse } from '../shared/provider/response-provider'
-import { BotSessionDto, BotStatusEnum, CreateNewBotDto, SendMessageDto } from './bot.dto'
-import { Bot } from './bot.model'
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const generateApiKey = require('generate-api-key')
-const monitoringGroupChatId = process.env.MONITORING_GROUP_CHAT_ID
-const baseURL = process.env.BASE_URL
-const isLocalEnv = process.env.ENV === 'local'
+import { BotStatusEnum, ButtonMessageTemplateActionType, SendButtonMessageDto, SendMessageDto, SendTemplateButtonMessageDto } from './bot.dto'
 
-let sock
+let sock: any
 let status = BotStatusEnum.OFFLINE
 
 const authFileJsonPath = './auth_info_multi.json'
@@ -37,139 +44,97 @@ function deleteOldAuthFileOnReconnect() {
   return true
 }
 
-async function connectToWhatsApp() {
+function connectionUpdateSync(ev: Partial<ConnectionState>) {
+  const { connection, qr, lastDisconnect } = ev
+  const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut
+
+  if (connection === 'close') {
+    console.log('Connection Closed due to ', lastDisconnect.error, ', reconnecting \n')
+
+    // Update Connection Status
+    status = BotStatusEnum.OFFLINE
+  } else if (connection === 'open') {
+    console.log(colors.green(figlet.textSync('Bot Connected', { horizontalLayout: 'full' })))
+
+    // Update Connection Status
+    status = BotStatusEnum.ONLINE
+  }
+
+  if (qr) {
+    // if the 'qr' property is available on 'conn'
+    console.info('QR Generated')
+
+    qrcode.toFile(resolve(__dirname, '../../qr', 'qr.png'), qr, {
+      width: 500,
+      output: 'png'
+    } as qrcode.QRCodeToFileOptions) // generate the file
+  } else if (connection && connection === 'close') {
+    // Update Connection Status
+    status = BotStatusEnum.OFFLINE
+
+    // when websocket is closed
+    if (fs.existsSync(resolve(__dirname, '../../qr', 'qr.png'))) {
+      // and, the QR file is exists
+      fs.unlinkSync(resolve(__dirname, '../../qr', 'qr.png')) // delete it
+    }
+  }
+
+  return { ev, shouldReconnect }
+}
+
+async function connectToWhatsApp(eventEmitter: EventEmitter2) {
   sock = makeWASocket({
-    // can provide additional config here
+    // can provide additional config heat
     printQRInTerminal: true,
     auth: state
   })
 
-  sock.ev.on('connection.update', async (update) => {
-    const notificationService = new NotificationService()
-
-    const { connection, lastDisconnect, qr } = update
+  sock.ev.on('connection.update', async (update: Partial<ConnectionState>) => {
+    // Use the connection update handler
+    const { connection } = update
+    const { shouldReconnect } = connectionUpdateSync(update)
 
     if (connection === 'close') {
-      if (!isLocalEnv) {
-        const botDisconnectErrorMessage = `[${baseURL}][🔴 Down] - BOTNYA TERPUTUS CUY, BENERIN GIH! 🙂`
-        await notificationService.sendErrorReportMessageToTelegram(monitoringGroupChatId, botDisconnectErrorMessage)
-      }
-
-      status = BotStatusEnum.OFFLINE
-      const shouldReconnect = (lastDisconnect.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut
-      console.log('connection closed due to ', lastDisconnect.error, ', reconnecting ', shouldReconnect)
       // reconnect if not logged out
       if (shouldReconnect) {
         deleteOldAuthFileOnReconnect()
-        connectToWhatsApp()
-      }
-    } else if (connection === 'open') {
-      if (!isLocalEnv) {
-        const botDisconnectErrorMessage = `[${baseURL}][✅ Up] - Nah mantab, botnya udah terhubung! 🥶`
-        await notificationService.sendErrorReportMessageToTelegram(monitoringGroupChatId, botDisconnectErrorMessage)
-
-        status = BotStatusEnum.ONLINE
-        console.log(colors.green(figlet.textSync('Bot Connected', { horizontalLayout: 'full' })))
+        connectToWhatsApp(eventEmitter)
       }
     }
 
-    if (qr) {
-      if (!isLocalEnv) {
-        const botDisconnectErrorMessage = `[${baseURL}][🔴 Down] - BOTNYA TERPUTUS CUY, PERLU SCAN QR, BENERIN GIH! 🙂`
-        await notificationService.sendErrorReportMessageToTelegram(monitoringGroupChatId, botDisconnectErrorMessage)
-      }
-
-      // if the 'qr' property is available on 'conn'
-      console.info('QR Generated')
-
-      qrcode.toFile(resolve(__dirname, '../../qr', 'qr.png'), qr, {
-        width: 500,
-        output: 'png'
-      } as qrcode.QRCodeToFileOptions) // generate the file
-    } else if (connection && connection === 'close') {
-      const botDisconnectErrorMessage = `[${baseURL}][🔴 Down] - BOTNYA TERPUTUS CUY, PERLU SCAN QR, BENERIN GIH! 🙂`
-      await notificationService.sendErrorReportMessageToTelegram(monitoringGroupChatId, botDisconnectErrorMessage)
-
-      // when websocket is closed
-      if (fs.existsSync(resolve(__dirname, '../../qr', 'qr.png'))) {
-        // and, the QR file is exists
-        fs.unlinkSync(resolve(__dirname, '../../qr', 'qr.png')) // delete it
-      }
-    }
-  })
-
-  sock.ev.on('messages.upsert', async (m) => {
-    console.log(JSON.stringify(m, undefined, 2))
-
-    console.log('replying to', m.messages[0].key.remoteJid)
+    eventEmitter.emit('connection.update', { ev: update, sock })
   })
 
   sock.ev.on('creds.update', saveState)
+  sock.ev.on('chats.upsert', (ev: Chat[]) => eventEmitter.emit('chats.upsert', { ev, sock }))
+  sock.ev.on('chats.update', (ev: Partial<Chat[]>) => eventEmitter.emit('chats.update', { ev, sock }))
+  sock.ev.on('chats.delete', (ev: string[]) => eventEmitter.emit('chats.delete', { ev, sock }))
+  sock.ev.on('presence.update', (ev: { id: string; presences: { [participant: string]: PresenceData } }) => eventEmitter.emit('presence.update', { ev, sock }))
+  sock.ev.on('contacts.upsert', (ev: Contact[]) => eventEmitter.emit('contacts.upsert', { ev, sock }))
+  sock.ev.on('contacts.update', (ev: Partial<Contact[]>) => eventEmitter.emit('contact.update', { ev, sock }))
+  sock.ev.on('messages.upsert', (ev: { messages: WAMessage[]; type: MessageUpsertType }) => eventEmitter.emit('message.upsert', { ev, sock }))
+  sock.ev.on('message.update', (ev: WAMessageUpdate[]) => eventEmitter.emit('message.update', { ev, sock }))
+  sock.ev.on('message.media-update', (ev: { key: WAMessageKey; media?: { ciphertext: Uint8Array; iv: Uint8Array }; error?: Boom }[]) =>
+    eventEmitter.emit('message.media-update', { ev, sock })
+  )
+  sock.ev.on('message.reaction', (ev: { key: WAMessageKey; reaction: proto.IReaction }[]) => eventEmitter.emit('message.reaction', { ev, sock }))
+  sock.ev.on('message-receipt.update', (ev: MessageUserReceiptUpdate[]) => eventEmitter.emit('message-receipt.update', { ev, sock }))
+  sock.ev.on('groups.upsert', (ev: GroupMetadata[]) => eventEmitter.emit('groups.upsert', { ev, sock }))
+  sock.ev.on('groups.update', (ev: Partial<GroupMetadata>[]) => eventEmitter.emit('groups.update', { ev, sock }))
+  sock.ev.on('groups-participant.update', (ev: { id: string; participants: string[]; action: ParticipantAction }) => eventEmitter.emit('groups-participant.update', { ev, sock }))
 }
 
 const isEnableWhatsAppBot = process.env.ENABLE_WHATSAPP_BOT === 'true'
 
 @Injectable()
 export class BotService implements OnModuleInit {
-  private sessions: BotSessionDto[] = []
+  constructor(private eventEmitter: EventEmitter2) {}
 
   async onModuleInit() {
     if (isEnableWhatsAppBot) {
-      const botDocs = JSON.parse(await readFile(join(process.cwd(), 'bots.json'), 'utf8'))
-      this.sessions = botDocs.map((doc) => this.mapToSessionDto(doc))
-
-      connectToWhatsApp()
+      connectToWhatsApp(this.eventEmitter)
     }
   }
-
-  async createBot(data: CreateNewBotDto, token: string) {
-    try {
-      const is_valid_token = validateToken(token)
-
-      if (!is_valid_token) {
-        throw new UnauthorizedException('Invalid Token')
-      }
-
-      const api_key = generateApiKey({
-        method: 'bytes',
-        prefix: 'p.iobot_',
-        length: 20
-      })
-
-      if (!state) {
-        throw new NotFoundError(`No Bot connected.`)
-      }
-
-      const unwanted_code = state?.creds?.me?.id?.replace(/^\d+/, '')
-      const phone_number = state?.creds?.me?.id.replace(unwanted_code, '')
-      const user_id = state?.creds?.me?.id
-
-      const botToInsert = new Bot()
-
-      botToInsert.id = uuid()
-      botToInsert.name = data?.name || phone_number
-      botToInsert.api_key = api_key
-      botToInsert.phone = phone_number
-      botToInsert.user_id = user_id
-
-      this.sessions.push(botToInsert)
-
-      fs.writeJSONSync(join(process.cwd(), 'bots.json'), this.sessions)
-
-      const isTokenAlreadyExists = this.sessions.find((b) => b.api_key === api_key || b.id === user_id)
-      if (!isTokenAlreadyExists) {
-        this.sessions.push(this.mapToSessionDto(botToInsert))
-      }
-
-      return new OkResponse({
-        api_key
-      })
-    } catch (error) {
-      console.log('error : ', error)
-      throw new HttpException(error?.response || error, error?.meta?.statusCode ? error?.meta?.statusCode : 500)
-    }
-  }
-
   async sendMessage(data: SendMessageDto, token: string) {
     try {
       const is_valid_token = validateToken(token)
@@ -188,6 +153,101 @@ export class BotService implements OnModuleInit {
       })
     } catch (error) {
       throw new HttpException(error?.response || error, error?.response?.statusCode ? error?.response?.statusCode : 500)
+    }
+  }
+
+  async sendButtonMesage(data: SendButtonMessageDto, token: string) {
+    try {
+      const is_valid_token = validateToken(token)
+
+      if (!isEnableWhatsAppBot) {
+        throw new InternalServerError('Bot Not Enabled!')
+      }
+
+      if (!is_valid_token) {
+        throw new UnauthorizedException('Invalid Token')
+      }
+
+      const chat_id = data.phone?.includes('@') ? data.phone : `${data.phone}@s.whatsapp.net`
+
+      return await sock.sendMessage(chat_id, {
+        text: data?.text,
+        footer: data?.footer,
+        image: { url: data?.image_url },
+        caption: data?.caption,
+        headerType: data?.header_type || 1,
+        buttons: data.buttons.map((btn, idx) => {
+          return {
+            buttonId: `btn_${idx + 1}`,
+            buttonText: {
+              displayText: btn.text
+            },
+            type: btn.type
+          }
+        })
+      })
+    } catch (error) {
+      throw new HttpException(error?.response || error, error?.response?.statusCode ? error?.response?.statusCode : 500)
+    }
+  }
+
+  async sendTemplateButtonMessage(data: SendTemplateButtonMessageDto, token: string) {
+    try {
+      const is_valid_token = validateToken(token)
+
+      if (!isEnableWhatsAppBot) {
+        throw new InternalServerError('Bot Not Enabled!')
+      }
+
+      if (!is_valid_token) {
+        throw new UnauthorizedException('Invalid Token')
+      }
+
+      const chat_id = data.phone?.includes('@') ? data.phone : `${data.phone}@s.whatsapp.net`
+
+      return await sock.sendMessage(chat_id, {
+        text: data?.text,
+        footer: data?.footer,
+        image: { url: data?.image_url },
+        caption: data?.caption,
+        templateButtons: data.template_buttons.map((btn, idx) => {
+          if (btn.action_type === ButtonMessageTemplateActionType.URL) {
+            return {
+              index: idx + 1,
+              urlButton: {
+                displayText: btn.text,
+                url: btn?.url,
+                id: `btn_${idx + 1}`
+              }
+            }
+          }
+
+          if (btn.action_type === ButtonMessageTemplateActionType.CALL) {
+            return {
+              index: idx + 1,
+              callButton: {
+                displayText: btn.text,
+                phoneNumber: btn?.phone,
+                id: `btn_${idx + 1}`
+              }
+            }
+          }
+
+          return {
+            index: idx + 1,
+            quickReplyButton: {
+              displayText: btn.text,
+              id: `btn_${idx + 1}`
+            }
+          }
+        })
+      })
+    } catch (error) {
+      console.log('Error On Send Template Button Message : ', error)
+      console.log('Error On Send Template Button Message : ', { ...error })
+
+      const errorMessage = `Error on establising connection, try to re-scan QR Code.`
+      throw new HttpException(errorMessage, error?.response?.statusCode ? error?.response?.statusCode : 500)
     }
   }
 
@@ -238,15 +298,5 @@ export class BotService implements OnModuleInit {
         message
       }
     )
-  }
-
-  private mapToSessionDto(data: Bot): BotSessionDto {
-    return {
-      id: data.id,
-      name: data.name,
-      phone: data.phone,
-      api_key: data.api_key,
-      user_id: data.user_id
-    }
   }
 }

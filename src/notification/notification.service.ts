@@ -46,7 +46,7 @@ export class NotificationService {
 
       try {
         await transporter.sendMail({
-          from: process.env.SENDER_EMAIL,
+          from: process.env.SMTP_SENDER_EMAIL,
           to: data.to,
           subject,
           html: message
@@ -61,6 +61,7 @@ export class NotificationService {
   }
 
   async sendErrorReportMessageToTelegram(chatId: number | string, message: string, extra?: ExtraReplyMessage) {
+    console.log('Chat ID : ......', chatId)
     return this.telegramBot.telegram
       .sendMessage(chatId, message, extra)
       .then(() => {
