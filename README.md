@@ -6,7 +6,7 @@
 
 ## Table of content
 
-- [OTPWA](#otpwa)
+- [otpwa](#otpwa)
   - [Table of content](#table-of-content)
   - [Library](#library)
   - [Folder Structure](#folder-structure)
